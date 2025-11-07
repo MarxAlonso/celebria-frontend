@@ -1,15 +1,57 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Colores principales de CELEBRIA */
+  --celebrity-purple: #6B46C1;
+  --celebrity-purple-light: #8B5CF6;
+  --celebrity-purple-dark: #553C9A;
+  --celebrity-pink: #EC4899;
+  --celebrity-pink-light: #F472B6;
+  --celebrity-gold: #F59E0B;
+  --celebrity-gold-light: #FCD34D;
+  --celebrity-gray-50: #F9FAFB;
+  --celebrity-gray-100: #F3F4F6;
+  --celebrity-gray-200: #E5E7EB;
+  --celebrity-gray-300: #D1D5DB;
+  --celebrity-gray-400: #9CA3AF;
+  --celebrity-gray-500: #6B7280;
+  --celebrity-gray-600: #4B5563;
+  --celebrity-gray-700: #374151;
+  --celebrity-gray-800: #1F2937;
+  --celebrity-gray-900: #111827;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', serif;
+  
+  /* Colores personalizados de CELEBRIA */
+  --color-celebrity-purple: var(--celebrity-purple);
+  --color-celebrity-purple-light: var(--celebrity-purple-light);
+  --color-celebrity-purple-dark: var(--celebrity-purple-dark);
+  --color-celebrity-pink: var(--celebrity-pink);
+  --color-celebrity-pink-light: var(--celebrity-pink-light);
+  --color-celebrity-gold: var(--celebrity-gold);
+  --color-celebrity-gold-light: var(--celebrity-gold-light);
+  --color-celebrity-gray-50: var(--celebrity-gray-50);
+  --color-celebrity-gray-100: var(--celebrity-gray-100);
+  --color-celebrity-gray-200: var(--celebrity-gray-200);
+  --color-celebrity-gray-300: var(--celebrity-gray-300);
+  --color-celebrity-gray-400: var(--celebrity-gray-400);
+  --color-celebrity-gray-500: var(--celebrity-gray-500);
+  --color-celebrity-gray-600: var(--celebrity-gray-600);
+  --color-celebrity-gray-700: var(--celebrity-gray-700);
+  --color-celebrity-gray-800: var(--celebrity-gray-800);
+  --color-celebrity-gray-900: var(--celebrity-gray-900);
+  
+  /* Gradientes */
+  --color-gradient-purple-pink: linear-gradient(135deg, var(--celebrity-purple) 0%, var(--celebrity-pink) 100%);
+  --color-gradient-gold: linear-gradient(135deg, var(--celebrity-gold) 0%, var(--celebrity-gold-light) 100%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +64,21 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Utilidades personalizadas */
+.celebrity-gradient {
+  background: linear-gradient(135deg, var(--celebrity-purple) 0%, var(--celebrity-pink) 100%);
+}
+
+.celebrity-gold-gradient {
+  background: linear-gradient(135deg, var(--celebrity-gold) 0%, var(--celebrity-gold-light) 100%);
+}
+
+.celebrity-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--celebrity-gray-200);
 }
