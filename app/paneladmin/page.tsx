@@ -23,11 +23,11 @@ export default function PanelAdminPage() {
                 Gestiona usuarios, permisos y configuración del sistema
               </p>
             </div>
-            <Link href="/panel">
+            {/*<Link href="/panel">
               <Button size="lg" className="celebrity-gradient text-white hover:opacity-90">
                 Volver al Panel de Usuario
               </Button>
-            </Link>
+            </Link>*/}
           </div>
         </div>
 
