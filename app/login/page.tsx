@@ -40,10 +40,10 @@ export default function LoginPage() {
     if (!validateForm()) return;
     
     try {
-      await login({
-        email: formData.email,
-        password: formData.password
-      });
+      await login(
+        formData.email,
+        formData.password
+      );
       
       router.push('/panel');
     } catch (error) {

@@ -60,7 +60,7 @@ export default function RegisterPage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone || undefined,
-        role: UserRole.ORGANIZER // Por defecto los usuarios son organizadores
+        role: UserRole.ORGANIZER // Send ORGANIZER role for regular users
       });
       
       router.push('/panel');

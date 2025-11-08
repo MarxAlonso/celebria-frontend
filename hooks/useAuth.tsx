@@ -6,7 +6,9 @@ import { authService, User } from '@/lib/auth';
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  loading: boolean; // legacy alias
+  isLoading: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
@@ -43,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authService.login({ email, password });
       authService.saveTokens(response.access_token, response.refresh_token);
       setUser(response.user);
-      router.push('/panelcliente');
+      router.push('/panel');
     } catch (error) {
       throw error;
     }
@@ -54,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authService.register(data);
       authService.saveTokens(response.access_token, response.refresh_token);
       setUser(response.user);
-      router.push('/panelcliente');
+      router.push('/panel');
     } catch (error) {
       throw error;
     }
@@ -70,6 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user,
       loading,
+      isLoading: loading,
+      isAuthenticated: !!user,
       login,
       register,
       logout,

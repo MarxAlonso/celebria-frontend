@@ -54,7 +54,15 @@ export const authService = {
   },
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post('/auth/register', data);
+    // Enviar solo los campos aceptados por el backend (como en Postman)
+    const { email, password, firstName, lastName, phone } = data;
+    const response = await api.post('/auth/register', {
+      email,
+      password,
+      firstName,
+      lastName,
+      ...(phone ? { phone } : {}),
+    });
     return response.data;
   },
 
