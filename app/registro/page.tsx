@@ -62,8 +62,6 @@ export default function RegisterPage() {
         phone: formData.phone || undefined,
         role: UserRole.ORGANIZER // Send ORGANIZER role for regular users
       });
-      
-      router.push('/panel');
     } catch (error) {
       console.error('Registration error:', error);
       // Error handling is already managed in the auth context

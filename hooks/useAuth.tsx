@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authService, User } from '@/lib/auth';
+import { authService, User, UserRole } from '@/lib/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -45,7 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authService.login({ email, password });
       authService.saveTokens(response.access_token, response.refresh_token);
       setUser(response.user);
-      router.push('/panel');
+      const target = response.user.role === UserRole.ADMIN ? '/paneladmin' : '/panel';
+      router.push(target);
     } catch (error) {
       throw error;
     }
@@ -56,7 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authService.register(data);
       authService.saveTokens(response.access_token, response.refresh_token);
       setUser(response.user);
-      router.push('/panel');
+      const target = response.user.role === UserRole.ADMIN ? '/paneladmin' : '/panel';
+      router.push(target);
     } catch (error) {
       throw error;
     }

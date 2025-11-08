@@ -44,8 +44,6 @@ export default function LoginPage() {
         formData.email,
         formData.password
       );
-      
-      router.push('/panel');
     } catch (error) {
       console.error('Login error:', error);
       // Error handling is already managed in the auth context
