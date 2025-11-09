@@ -79,7 +79,7 @@ export default function InvitationEditorPage() {
                 <Save className="w-4 h-4 mr-2" />
                 Guardar diseño
               </Button>
-              <Button onClick={() => window.open('/visualizaciondeldesigndelainvitacion', '_blank')}>
+              <Button onClick={() => window.open(`/panel/invitaciones/${id}/vista`, '_blank')}>
                 <Eye className="w-4 h-4 mr-2" />
                 Ver Previa
               </Button>
