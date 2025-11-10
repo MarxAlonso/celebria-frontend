@@ -58,7 +58,7 @@ const templates = [
 
 export default function PanelPage() {
   return (
-    <div className="flex h-screen bg-celebrity-gray-50">
+    <div className="flex h-screen bg-[#F6E7E4]">
       <Sidebar />
       
       <div className="flex-1 overflow-auto">

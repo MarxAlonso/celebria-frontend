@@ -139,7 +139,7 @@ export default function PanelCreateInvitationPage() {
       if (id) {
         router.push(`/panel/invitaciones/${id}/editor`);
       } else {
-        router.push('/visualizaciondeldesigndelainvitacion');
+        router.push(`/panel/invitaciones/${id}/vista`);
       }
     } catch (err) {
       console.error('Error completando la invitación:', err);

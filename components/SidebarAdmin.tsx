@@ -19,7 +19,7 @@ export function SidebarAdmin() {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-celebrity-gray-200 h-screen p-4">
+    <aside className="w-64 bg-[#FFD8C2] border-r border-celebrity-gray-200 h-screen p-4">
       <div className="mb-6">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 celebrity-gradient rounded-lg flex items-center justify-center">

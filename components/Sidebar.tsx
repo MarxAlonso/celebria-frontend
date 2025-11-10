@@ -33,7 +33,7 @@ export function Sidebar() {
   const { logout } = useAuth();
 
   return (
-    <div className="w-64 bg-white border-r border-celebrity-gray-200 h-screen flex flex-col">
+    <div className="w-64 bg-[#FFD8C2] border-r border-celebrity-gray-200 h-screen flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-celebrity-gray-200">
         <Link href="/panel" className="flex items-center space-x-3">

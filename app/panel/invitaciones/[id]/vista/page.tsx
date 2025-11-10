@@ -69,7 +69,7 @@ export default function InvitationPreviewPage() {
 
   return (
     <OrganizerProtectedRoute>
-      <div className="flex h-screen bg-celebrity-gray-50">
+      <div className="flex h-screen bg-[#F6E7E4]">
         <Sidebar />
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-celebrity-gray-200 px-8 py-6">
