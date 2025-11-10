@@ -8,7 +8,7 @@ import { Sparkles, Palette, Clock, Heart, Star, ArrowRight, CheckCircle } from '
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-celebrity-purple/5 via-white to-celebrity-pink/5">
+    <div className="min-h-screen bg-invitaciones from-celebrity-purple/5 via-white to-celebrity-pink/5">
       <Navbar />
       
       {/* Hero Section */}

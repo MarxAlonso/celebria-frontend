@@ -82,3 +82,6 @@ body {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--celebrity-gray-200);
 }
+.bg-invitaciones {
+  background: linear-gradient(to bottom right, #FFD8C2, #F6E7E4, #ffffff);
+}

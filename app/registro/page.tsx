@@ -78,7 +78,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-celebrity-purple/5 via-white to-celebrity-pink/5">
+    <div className="min-h-screen bg-invitaciones from-celebrity-purple/5 via-white to-celebrity-pink/5">
       <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
@@ -117,7 +117,7 @@ export default function RegisterPage() {
                     type="text"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className={`block w-full pl-10 pr-3 py-3 border ${
+                    className={`block w-full text-[#1E1E1E] pl-10 pr-3 py-3 border ${
                       errors.firstName ? 'border-red-500' : 'border-celebrity-gray-300'
                     } rounded-lg focus:outline-none focus:ring-2 focus:ring-celebrity-purple focus:border-transparent`}
                     placeholder="Tu nombre"
@@ -143,7 +143,7 @@ export default function RegisterPage() {
                     type="text"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className={`block w-full pl-10 pr-3 py-3 border ${
+                    className={`block w-full text-[#1E1E1E] pl-10 pr-3 py-3 border ${
                       errors.lastName ? 'border-red-500' : 'border-celebrity-gray-300'
                     } rounded-lg focus:outline-none focus:ring-2 focus:ring-celebrity-purple focus:border-transparent`}
                     placeholder="Tu apellido"
@@ -169,7 +169,7 @@ export default function RegisterPage() {
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`block w-full pl-10 pr-3 py-3 border ${
+                    className={`block w-full text-[#1E1E1E] pl-10 pr-3 py-3 border ${
                       errors.email ? 'border-red-500' : 'border-celebrity-gray-300'
                     } rounded-lg focus:outline-none focus:ring-2 focus:ring-celebrity-purple focus:border-transparent`}
                     placeholder="tu@email.com"
@@ -195,7 +195,7 @@ export default function RegisterPage() {
                     type="tel"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className="block w-full pl-10 pr-3 py-3 border border-celebrity-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-celebrity-purple focus:border-transparent"
+                    className="block w-full text-[#1E1E1E] pl-10 pr-3 py-3 border border-celebrity-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-celebrity-purple focus:border-transparent"
                     placeholder="+1 234 567 8900"
                   />
                 </div>
@@ -216,7 +216,7 @@ export default function RegisterPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleInputChange}
-                    className={`block w-full pl-10 pr-10 py-3 border ${
+                    className={`block w-full text-[#1E1E1E] pl-10 pr-10 py-3 border ${
                       errors.password ? 'border-red-500' : 'border-celebrity-gray-300'
                     } rounded-lg focus:outline-none focus:ring-2 focus:ring-celebrity-purple focus:border-transparent`}
                     placeholder="••••••••"
