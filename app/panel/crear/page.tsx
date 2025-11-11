@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { useInvitationCreator } from '@/hooks/useInvitationCreator';
 import { EventType } from '@/lib/events';
 import { Template, TemplateStatus, templateService } from '@/lib/templates';
-import { InvitationType } from '@/lib/invitations';
+import { InvitationType, invitationService } from '@/lib/invitations';
 import {
   CheckCircle,
   Sparkles,
@@ -37,6 +37,23 @@ type EditableDesign = {
   fonts?: { heading?: string; body?: string };
   layout?: string;
   content?: { header?: string; body?: string; footer?: string; images?: string[] };
+  pages?: {
+    background?: { type: 'image' | 'color'; value: string };
+    sections?: { key: 'header' | 'body' | 'footer'; text: string }[];
+    elements?: {
+      id: string;
+      type: 'text' | 'image' | 'shape';
+      content?: string;
+      src?: string;
+      x: number;
+      y: number;
+      width?: number;
+      height?: number;
+      rotation?: number;
+      zIndex?: number;
+      styles?: Record<string, any>;
+    }[];
+  }[];
 };
 
 export default function PanelCreateInvitationPage() {
@@ -54,6 +71,8 @@ export default function PanelCreateInvitationPage() {
     designData,
     setDesignData,
   } = useInvitationCreator();
+
+  const [selectedPage, setSelectedPage] = useState(0);
 
   const [eventData, setEventData] = useState({
     title: '',
@@ -119,6 +138,51 @@ export default function PanelCreateInvitationPage() {
   };
 
   const handleStepClick = (stepId: number) => setCurrentStep(stepId);
+  // Índices por defecto para mapeo (se hará realmente en el editor)
+  const mapPages = { headerPage: 0, bodyPage: 0, footerPage: 0 };
+
+  // === Edición de páginas (similar al editor de invitaciones) ===
+  const addPage = () => {
+    setDesignData((prev: EditableDesign) => {
+      const newPages = [
+        ...((prev.pages || []) as any[]),
+        { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] },
+      ];
+      setSelectedPage(newPages.length - 1);
+      return { ...prev, pages: newPages };
+    });
+  };
+
+  const removePage = (idx: number) => {
+    setDesignData((prev: EditableDesign) => {
+      const updated = ((prev.pages || []) as any[]).filter((_: any, i: number) => i !== idx);
+      const nextSelected = Math.max(0, Math.min(selectedPage, updated.length - 1));
+      setSelectedPage(nextSelected);
+      return { ...prev, pages: updated };
+    });
+  };
+
+  const updateBackground = (idx: number, type: 'image' | 'color', value: string) => {
+    setDesignData((prev: EditableDesign) => {
+      const pages = ((prev.pages || []) as any[]).map((pg: any, i: number) => (i === idx ? { ...pg, background: { type, value } } : pg));
+      return { ...prev, pages };
+    });
+  };
+
+  const updateSectionText = (idx: number, key: 'header' | 'body' | 'footer', text: string) => {
+    setDesignData((prev: EditableDesign) => {
+      const pages = ((prev.pages || []) as any[]).map((pg: any, i: number) => {
+        if (i !== idx) return pg;
+        const sections = (pg.sections || []) as any[];
+        const exists = sections.find((s: any) => s.key === key);
+        if (exists) {
+          return { ...pg, sections: sections.map((s: any) => (s.key === key ? { ...s, text } : s)) };
+        }
+        return { ...pg, sections: [...sections, { key, text }] };
+      });
+      return { ...prev, pages };
+    });
+  };
 
   const handleComplete = async () => {
     try {
@@ -126,24 +190,71 @@ export default function PanelCreateInvitationPage() {
         alert('Primero debes crear un evento');
         return;
       }
+      // Construir diseño inicial con páginas y contenido mapeado
+      const pages = (designData.pages || []).map((pg) => ({ ...pg }));
+      const ensurePage = (i: number) => {
+        if (!pages[i]) pages[i] = { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] };
+      };
+      ensurePage(mapPages.headerPage);
+      ensurePage(mapPages.bodyPage);
+      ensurePage(mapPages.footerPage);
+      const setSection = (i: number, key: 'header' | 'body' | 'footer', text: string) => {
+        const sections = pages[i].sections || [];
+        const idx = sections.findIndex((s) => s.key === key);
+        if (idx >= 0) sections[idx] = { ...sections[idx], text };
+        else sections.push({ key, text });
+        pages[i].sections = sections;
+      };
+      if (invitationData.title) setSection(mapPages.headerPage, 'header', invitationData.title);
+      if (invitationData.message || invitationData.content.body) setSection(mapPages.bodyPage, 'body', invitationData.message || invitationData.content.body);
+      if (invitationData.content.footer) setSection(mapPages.footerPage, 'footer', invitationData.content.footer);
+      // Insertar datos del evento como elemento de texto para reubicar luego
+      const eventText = `${event.title}\n${new Date(event.eventDate).toLocaleDateString()}${event.location ? `\n${event.location}` : ''}`;
+      pages[mapPages.bodyPage].elements = [
+        ...((pages[mapPages.bodyPage].elements || []) as any[]),
+        {
+          id: `el-${Date.now()}`,
+          type: 'text',
+          content: eventText,
+          x: 24,
+          y: 320,
+          zIndex: 2,
+          styles: { color: designData.colors?.text || '#1f2937', fontSize: 14 },
+        },
+      ];
+
       const invitationPayload = {
         title: invitationData.title || event.title,
         message: invitationData.message,
         type: InvitationType.DIGITAL,
         eventId: event.id,
         templateId: selectedTemplateId || undefined,
-        customDesign: designData,
+        customDesign: { ...designData, pages },
       };
       const created = await createInvitation(invitationPayload);
       const id = (created as { id?: string })?.id ?? invitation?.id;
       if (id) {
         router.push(`/panel/invitaciones/${id}/editor`);
-      } else {
-        router.push(`/panel/invitaciones/${id}/vista`);
       }
     } catch (err) {
       console.error('Error completando la invitación:', err);
       alert('Hubo un error al guardar la invitación');
+    }
+  };
+
+  const handleDeleteInvitation = async () => {
+    try {
+      if (!invitation?.id) {
+        alert('Aún no has creado una invitación para eliminar.');
+        return;
+      }
+      const confirmed = window.confirm('¿Seguro que deseas eliminar esta invitación?');
+      if (!confirmed) return;
+      await invitationService.deleteInvitation(invitation.id);
+      alert('Invitación eliminada.');
+    } catch (err) {
+      console.error('Error eliminando la invitación:', err);
+      alert('No se pudo eliminar la invitación');
     }
   };
 
@@ -243,7 +354,7 @@ export default function PanelCreateInvitationPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {templates.map((template) => (
-                  <div key={template.id} className={`celebrity-card overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${template?.id === selectedTemplateId ? 'ring-2 ring-celebrity-purple' : ''}`} onClick={() => { setSelectedTemplateId(template.id); setDesignData(template.design); }}>
+                  <div key={template.id} className={`celebrity-card overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${template?.id === selectedTemplateId ? 'ring-2 ring-celebrity-purple' : ''}`}>
                     <div className="h-48 bg-gradient-to-br from-celebrity-purple/20 to-celebrity-pink/20 flex items-center justify-center">
                       <div className="w-20 h-20 celebrity-gradient rounded-lg flex items-center justify-center">
                         <Sparkles className="w-10 h-10 text-white" />
@@ -252,6 +363,25 @@ export default function PanelCreateInvitationPage() {
                     <div className="p-4">
                       <h3 className="font-semibold text-celebrity-gray-900 mb-1">{template.name}</h3>
                       <p className="text-sm text-celebrity-gray-600 mb-3 capitalize">{template.type}</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Button variant="outline" onClick={() => { setSelectedTemplateId(template.id); setDesignData(template.design); }}>Usar como principal</Button>
+                        <Button variant="ghost" onClick={() => {
+                          try {
+                            const pagesToAdd = (template.design?.pages || []);
+                            if (!pagesToAdd || pagesToAdd.length === 0) return;
+                            setDesignData((prev: EditableDesign) => ({
+                              ...prev,
+                              pages: [
+                                ...((prev.pages || []) as any[]).map((p: any) => ({ ...p })),
+                                ...pagesToAdd.map((p: any) => ({ ...p })),
+                              ],
+                            }));
+                          } catch (err) {
+                            console.error('Error importando páginas del template:', err);
+                            alert('No se pudo importar páginas de este template');
+                          }
+                        }}>Agregar páginas</Button>
+                      </div>
                       {template?.id === selectedTemplateId && (
                         <div className="flex items-center text-celebrity-purple">
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -296,15 +426,88 @@ export default function PanelCreateInvitationPage() {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-3xl font-bold font-serif text-celebrity-gray-900 mb-4">Sube imágenes</h2>
-              <p className="text-lg text-celebrity-gray-600 max-w-2xl mx-auto">Añade fotos o imágenes que complementen tu invitación y la hagan única.</p>
+              <h2 className="text-3xl font-bold font-serif text-celebrity-gray-900 mb-2">Páginas del diseño</h2>
+              <p className="text-lg text-celebrity-gray-600 max-w-3xl mx-auto">
+                Ajusta el fondo y los textos por página. Importa páginas en el paso anterior y aquí reemplaza <strong>Header</strong>, <strong>Body</strong> y <strong>Footer</strong> con los datos de tu evento.
+              </p>
             </div>
-            <div className="max-w-2xl mx-auto">
-              <div className="border-2 border-dashed border-celebrity-gray-300 rounded-lg p-8 text-center hover:border-celebrity-purple transition-colors cursor-pointer">
-                <Image className="w-12 h-12 text-celebrity-gray-400 mx-auto mb-4" />
-                <p className="text-lg font-medium text-celebrity-gray-900 mb-2">Arrastra tus imágenes aquí</p>
-                <p className="text-sm text-celebrity-gray-600 mb-4">o haz clic para seleccionar archivos</p>
-                <Button variant="outline">Seleccionar archivos</Button>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              {/* Lista de páginas */}
+              <div className="celebrity-card p-6 xl:col-span-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-celebrity-gray-900">Páginas</h3>
+                  <Button variant="outline" onClick={addPage}>Agregar página</Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {((designData.pages || []) as any[]).map((pg: any, idx: number) => (
+                    <div key={idx} className={`cursor-pointer rounded border ${idx === selectedPage ? 'border-celebrity-purple' : 'border-celebrity-gray-200'}`} onClick={() => setSelectedPage(idx)}>
+                      <div style={{ width: 120, height: 200, ...(pg?.background?.type === 'image' ? { backgroundImage: `url(${pg?.background?.value})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: pg?.background?.value || '#ffffff' }) }} />
+                      <div className="p-2 flex items-center justify-between text-xs">
+                        <span>Página {idx + 1}</span>
+                        <button className="text-red-600" onClick={(e) => { e.stopPropagation(); removePage(idx); }}>Eliminar</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Configuración de página seleccionada */}
+              <div className="celebrity-card p-6 xl:col-span-1">
+                <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Fondo y secciones</h3>
+                {(() => {
+                  const pg = ((designData.pages || []) as any[])[selectedPage];
+                  const previewStyle: React.CSSProperties = { width: 360, height: 640, borderRadius: 12, overflow: 'hidden', position: 'relative', border: '1px solid #e5e7eb', background: '#ffffff' };
+                  const backgroundStyle = pg?.background?.type === 'image'
+                    ? { backgroundImage: `url(${pg?.background?.value || ''})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : { background: pg?.background?.value || '#ffffff' };
+                  return (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Tipo de fondo</label>
+                          <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={pg?.background?.type || 'color'} onChange={(e) => updateBackground(selectedPage, e.target.value as 'image' | 'color', pg?.background?.value || '')}>
+                            <option value="image">Imagen (URL)</option>
+                            <option value="color">Color</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Valor</label>
+                          <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" placeholder="https://... o #f0e6dc" value={pg?.background?.value || ''} onChange={(e) => updateBackground(selectedPage, pg?.background?.type || 'color', e.target.value)} />
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Header (título)</label>
+                          <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" placeholder={event?.title ? `Ej: ${event.title}` : 'Título del evento'} value={(pg?.sections || []).find((s: any) => s.key === 'header')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'header', e.target.value)} />
+                          <p className="text-xs text-celebrity-gray-500 mt-1">Sugerencia: usa el título del evento (ej. “Boda de María y Juan”).</p>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Body (mensaje) </label>
+                          <textarea rows={3} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" placeholder={event?.eventDate ? `Ej: ${new Date(event.eventDate).toLocaleDateString()} · ${event?.location || 'Lugar'}` : 'Mensaje principal y detalles del evento'} value={(pg?.sections || []).find((s: any) => s.key === 'body')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'body', e.target.value)} />
+                          <p className="text-xs text-celebrity-gray-500 mt-1">Incluye fecha, hora, ubicación y cualquier instrucción importante.</p>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Footer (pie de página)</label>
+                          <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" placeholder="Contacto, RSVP, redes sociales…" value={(pg?.sections || []).find((s: any) => s.key === 'footer')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'footer', e.target.value)} />
+                        </div>
+                      </div>
+
+                      {/* Vista previa */}
+                      <div className="mt-4">
+                        <h4 className="text-sm font-semibold mb-2">Vista previa</h4>
+                        <div className="mx-auto" style={previewStyle}>
+                          <div className="absolute inset-0" style={backgroundStyle} />
+                          <div className="absolute inset-0 p-3">
+                            <div className="absolute left-3 top-3 text-xl font-serif font-bold" style={{ color: designData.colors?.text || '#1f2937' }}>{(pg?.sections || []).find((s: any) => s.key === 'header')?.text}</div>
+                            <div className="absolute left-3 right-3 top-14 text-sm" style={{ color: designData.colors?.text || '#374151' }}>{(pg?.sections || []).find((s: any) => s.key === 'body')?.text}</div>
+                            <div className="absolute left-3 bottom-3 text-xs opacity-80" style={{ color: designData.colors?.text || '#6b7280' }}>{(pg?.sections || []).find((s: any) => s.key === 'footer')?.text}</div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-celebrity-gray-500 mt-2">Usa URLs públicas de imagen (Drive, CDN) para el fondo, o colores HEX (#f0e6dc).</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -315,6 +518,20 @@ export default function PanelCreateInvitationPage() {
             <div className="text-center">
               <h2 className="text-3xl font-bold font-serif text-celebrity-gray-900 mb-4">Revisa y guarda</h2>
               <p className="text-lg text-celebrity-gray-600 max-w-2xl mx-auto">Guarda tu invitación y continúa en el editor visual.</p>
+            </div>
+            <div className="celebrity-card p-6 max-w-2xl mx-auto space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-celebrity-gray-900">Resumen</h3>
+                <p className="text-sm text-celebrity-gray-700">Plantilla principal: {templates.find(t => t.id === selectedTemplateId)?.name || 'Ninguna'}</p>
+                <p className="text-sm text-celebrity-gray-700">Páginas totales: {(designData.pages || []).length || 0}</p>
+                <p className="text-sm text-celebrity-gray-700">Título: {invitationData.title || event?.title || '-'}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleComplete} className="celebrity-gradient text-white">Guardar y abrir editor</Button>
+                {invitation?.id ? (
+                  <Button variant="outline" onClick={handleDeleteInvitation}>Eliminar invitación</Button>
+                ) : null}
+              </div>
             </div>
           </div>
         );

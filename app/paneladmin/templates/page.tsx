@@ -1,22 +1,29 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Palette, Plus, Save } from 'lucide-react';
-import { AdminProtectedRoute } from '@/components/AdminProtectedRoute';
-import { templateService, Template, TemplateType, TemplateStatus, CreateTemplateDto } from '@/lib/templates';
+import { Plus } from 'lucide-react';
+import { templateService, Template, TemplateType, CreateTemplateDto } from '@/lib/templates';
+import { SidebarAdmin } from '@/components/SidebarAdmin';
+import { HeaderAdmin } from '@/components/uiPanelAdmin/HeaderAdmin';
+import { TemplatesTable } from './components/TemplatesTable';
+import { TemplatePreviewModal } from './components/TemplatePreviewModal';
+import { TemplateEditor } from './components/TemplateEditor';
 
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [showCreate, setShowCreate] = useState<boolean>(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<Template | null>(null);
 
   const defaultDesign: CreateTemplateDto['design'] = {
     colors: { primary: '#8b5cf6', secondary: '#f59e0b', accent: '#ec4899', background: '#ffffff' },
     fonts: { heading: 'serif', body: 'sans-serif' },
     layout: 'classic',
-    customCss: ''
+    customCss: '',
+    pages: [],
   };
 
   const [form, setForm] = useState<CreateTemplateDto>({
@@ -46,10 +53,89 @@ export default function AdminTemplatesPage() {
     loadTemplates();
   }, []);
 
-  const handleCreate = async () => {
+  // --- Editor de páginas del diseño ---
+  const addPage = () => {
+    setForm((p) => ({
+      ...p,
+      design: {
+        ...p.design,
+        pages: [
+          ...(p.design.pages || []),
+          {
+            background: { type: 'image', value: '/pag%201.png' },
+            sections: [
+              { key: 'header', text: '' },
+              { key: 'body', text: '' },
+              { key: 'footer', text: '' },
+            ],
+          },
+        ],
+      },
+    }));
+  };
+
+  const updatePageBackground = (idx: number, type: 'color' | 'image', value: string) => {
+    setForm((p) => {
+      const pages = [...(p.design.pages || [])];
+      pages[idx] = {
+        ...(pages[idx] || {}),
+        background: { type, value },
+      };
+      return { ...p, design: { ...p.design, pages } };
+    });
+  };
+
+  const updatePageSectionText = (idx: number, key: string, text: string) => {
+    setForm((p) => {
+      const pages = [...(p.design.pages || [])];
+      const sections = [...((pages[idx]?.sections) || [])];
+      const i = sections.findIndex((s) => s.key === key);
+      if (i >= 0) sections[i] = { ...sections[i], text };
+      else sections.push({ key, text });
+      pages[idx] = { ...(pages[idx] || {}), sections };
+      return { ...p, design: { ...p.design, pages } };
+    });
+  };
+
+  const removePage = (idx: number) => {
+    setForm((p) => {
+      const pages = [...(p.design.pages || [])];
+      pages.splice(idx, 1);
+      return { ...p, design: { ...p.design, pages } };
+    });
+  };
+
+  const openEditorForTemplate = async (id: string) => {
     try {
       setSaving(true);
-      await templateService.createTemplate(form);
+      const tpl = await templateService.getTemplateById(id);
+      setForm({
+        name: tpl.name,
+        description: tpl.description,
+        type: tpl.type,
+        design: tpl.design,
+        content: tpl.content,
+        price: tpl.price,
+        eventId: tpl.eventId,
+      });
+      setEditingId(id);
+      setShowCreate(true);
+    } catch (err) {
+      console.error('Error cargando template para edición:', err);
+      alert('No se pudo cargar el template');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      if (editingId) {
+        await templateService.updateTemplate(editingId, form);
+      } else {
+        await templateService.createTemplate(form);
+      }
       setShowCreate(false);
       // Reset formulario tras crear
       setForm({
@@ -61,183 +147,110 @@ export default function AdminTemplatesPage() {
         price: 0,
         eventId: undefined,
       });
+      setEditingId(null);
       await loadTemplates();
     } catch (err) {
-      console.error('Error creando template:', err);
-      alert('No se pudo crear el template');
+      console.error('Error guardando template:', err);
+      alert('No se pudo guardar el template');
     } finally {
       setSaving(false);
     }
   };
 
-  const previewStyle = useMemo(() => ({
-    background: `linear-gradient(135deg, ${form.design.colors.primary}, ${form.design.colors.secondary})`,
-    color: '#1f2937',
-    fontFamily: form.design.fonts.body,
-  }), [form]);
+  const handleDelete = async (id: string) => {
+    const ok = window.confirm('¿Eliminar este template? Esta acción no se puede deshacer.');
+    if (!ok) return;
+    try {
+      // Intentar endpoint de borrado si existe en el servicio
+      const svc: any = templateService as any;
+      if (typeof svc.deleteTemplate === 'function') {
+        await svc.deleteTemplate(id);
+      } else {
+        // Fallback: DELETE directo al backend asumiendo ruta REST común
+        const base = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+        const url = `${base}/templates/${id}`;
+        const res = await fetch(url, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`DELETE ${url} failed: ${res.status}`);
+      }
+      await loadTemplates();
+    } catch (err) {
+      console.error('Error eliminando template:', err);
+      alert('No se pudo eliminar el template');
+    }
+  };
+
+  const handleDuplicate = async (id: string) => {
+    try {
+      // Intentar usar endpoint dedicado si existe
+      try {
+        // @ts-ignore puede no existir en backend
+        const created = await (templateService as any).duplicateTemplate?.(id);
+        if (created) {
+          await loadTemplates();
+          return;
+        }
+      } catch {}
+      // Fallback: duplicación manual
+      const tpl = await templateService.getTemplateById(id);
+      const copyName = `${tpl.name} (copia)`;
+      await templateService.createTemplate({
+        name: copyName,
+        description: tpl.description,
+        type: tpl.type,
+        design: tpl.design,
+        content: tpl.content,
+        price: tpl.price,
+        eventId: tpl.eventId,
+      });
+      await loadTemplates();
+    } catch (err) {
+      console.error('Error duplicando template:', err);
+      alert('No se pudo duplicar el template');
+    }
+  };
 
   return (
-    <AdminProtectedRoute>
-      <div className="px-8 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold font-serif text-celebrity-gray-900">Templates</h2>
-          <Button className="celebrity-gradient text-white" onClick={() => setShowCreate((v) => !v)}>
-            <Plus className="w-4 h-4 mr-2" /> Nuevo template
-          </Button>
-        </div>
+    <div className="flex h-screen bg-[#F6E7E4]">
+      <SidebarAdmin />
 
-        {showCreate && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Formulario de creación */}
-            <div className="celebrity-card p-6 lg:col-span-2">
-              <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-4">Crear Template</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Nombre</label>
-                  <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Tipo</label>
-                  <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as TemplateType }))}>
-                    {Object.values(TemplateType).map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Descripción</label>
-                  <textarea className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.description || ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Precio</label>
-                  <input type="number" className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.price || 0} onChange={(e) => setForm((p) => ({ ...p, price: Number(e.target.value) }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Event ID (opcional)</label>
-                  <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.eventId || ''} onChange={(e) => setForm((p) => ({ ...p, eventId: e.target.value || undefined }))} />
-                </div>
+      <div className="flex-1 overflow-auto">
+        <HeaderAdmin />
 
-                {/* Diseño - Colores */}
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Color primario</label>
-                  <input type="color" className="w-full h-10 rounded border border-celebrity-gray-300" value={form.design.colors.primary} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, colors: { ...p.design.colors, primary: e.target.value } } }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Color secundario</label>
-                  <input type="color" className="w-full h-10 rounded border border-celebrity-gray-300" value={form.design.colors.secondary} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, colors: { ...p.design.colors, secondary: e.target.value } } }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Color acento</label>
-                  <input type="color" className="w-full h-10 rounded border border-celebrity-gray-300" value={form.design.colors.accent} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, colors: { ...p.design.colors, accent: e.target.value } } }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Color fondo</label>
-                  <input type="color" className="w-full h-10 rounded border border-celebrity-gray-300" value={form.design.colors.background} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, colors: { ...p.design.colors, background: e.target.value } } }))} />
-                </div>
-
-                {/* Diseño - Tipografías */}
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Fuente Heading</label>
-                  <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.design.fonts.heading} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, fonts: { ...p.design.fonts, heading: e.target.value } } }))}>
-                    <option value="serif">Serif</option>
-                    <option value="sans-serif">Sans Serif</option>
-                    <option value="monospace">Monospace</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Fuente Body</label>
-                  <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.design.fonts.body} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, fonts: { ...p.design.fonts, body: e.target.value } } }))}>
-                    <option value="serif">Serif</option>
-                    <option value="sans-serif">Sans Serif</option>
-                    <option value="monospace">Monospace</option>
-                  </select>
-                </div>
-
-                {/* Diseño - Layout y CSS */}
-                <div>
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Layout</label>
-                  <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.design.layout} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, layout: e.target.value } }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Custom CSS</label>
-                  <textarea className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.design.customCss || ''} onChange={(e) => setForm((p) => ({ ...p, design: { ...p.design, customCss: e.target.value } }))} />
-                </div>
-
-                {/* Contenido por defecto */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Encabezado</label>
-                  <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.content?.header || ''} onChange={(e) => setForm((p) => ({ ...p, content: { ...(p.content || {}), header: e.target.value } }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Cuerpo</label>
-                  <textarea className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.content?.body || ''} onChange={(e) => setForm((p) => ({ ...p, content: { ...(p.content || {}), body: e.target.value } }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Pie</label>
-                  <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={form.content?.footer || ''} onChange={(e) => setForm((p) => ({ ...p, content: { ...(p.content || {}), footer: e.target.value } }))} />
-                </div>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <Button variant="outline" className="mr-2" onClick={() => setShowCreate(false)}>Cancelar</Button>
-                <Button onClick={handleCreate} loading={saving}>
-                  <Save className="w-4 h-4 mr-2" /> Guardar template
-                </Button>
-              </div>
-            </div>
-
-            {/* Previsualización */}
-            <div className="celebrity-card p-6 lg:col-span-1">
-              <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-4">Previsualización</h3>
-              <div className="h-[260px] rounded-lg flex items-center justify-center" style={previewStyle}>
-                <div className="text-center" style={{ fontFamily: form.design.fonts.heading }}>
-                  <Palette className="w-10 h-10 mx-auto mb-2" />
-                  <h4 className="text-xl font-bold mb-1">{form.name || 'Nuevo template'}</h4>
-                  {form.content?.header && <p className="text-sm opacity-80">{form.content.header}</p>}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="celebrity-card p-6">
-          <div className="flex items-center mb-4">
-            <Palette className="w-5 h-5 text-celebrity-purple mr-2" />
-            <span className="font-medium">Gestión de templates</span>
+        <div className="px-8 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold font-serif text-celebrity-gray-900">Templates</h2>
+            <Button className="celebrity-gradient text-white" onClick={() => setShowCreate((v) => !v)}>
+              <Plus className="w-4 h-4 mr-2" /> {showCreate ? 'Cerrar editor' : 'Nuevo template'}
+            </Button>
           </div>
 
-          {loading ? (
-            <div className="py-8 text-center text-celebrity-gray-600">Cargando templates…</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-celebrity-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-celebrity-gray-500 uppercase">Nombre</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-celebrity-gray-500 uppercase">Tipo</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-celebrity-gray-500 uppercase">Estado</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-celebrity-gray-500 uppercase">Precio</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-celebrity-gray-500 uppercase">Creado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-celebrity-gray-200">
-                  {templates.map((t) => (
-                    <tr key={t.id}>
-                      <td className="px-4 py-2">{t.name}</td>
-                      <td className="px-4 py-2">{t.type}</td>
-                      <td className="px-4 py-2">
-                        <span className="px-2 py-1 rounded bg-celebrity-purple/10 text-celebrity-purple text-xs">{t.status || TemplateStatus.ACTIVE}</span>
-                      </td>
-                      <td className="px-4 py-2">${Number(t.price ?? 0).toFixed(2)}</td>
-                      <td className="px-4 py-2">{new Date(t.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {templates.length === 0 && (
-                <div className="py-6 text-center text-celebrity-gray-600">No hay templates aún. Crea uno para comenzar.</div>
-              )}
-            </div>
+          {showCreate && (
+            <TemplateEditor
+              form={form}
+              setForm={(updater) => setForm((prev) => updater(prev))}
+              editingId={editingId}
+              saving={saving}
+              onCancel={() => setShowCreate(false)}
+              onSave={handleSave}
+              addPage={addPage}
+              updatePageBackground={updatePageBackground}
+              updatePageSectionText={updatePageSectionText}
+              removePage={removePage}
+            />
           )}
+
+          <TemplatesTable
+            templates={templates}
+            loading={loading}
+            onView={(t) => setViewing(t)}
+            onEdit={(id) => openEditorForTemplate(id)}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+          />
+
+          <TemplatePreviewModal viewing={viewing} onClose={() => setViewing(null)} />
         </div>
       </div>
-    </AdminProtectedRoute>
+    </div>
   );
 }

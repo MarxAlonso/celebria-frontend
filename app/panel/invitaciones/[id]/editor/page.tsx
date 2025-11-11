@@ -3,53 +3,163 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { OrganizerProtectedRoute } from '@/components/OrganizerProtectedRoute';
+import { Sidebar } from '@/components/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { invitationService, Invitation } from '@/lib/invitations';
-import { Sparkles, Save, Eye } from 'lucide-react';
+import { templateService, Template } from '@/lib/templates';
+import { Plus, Save, Trash2, Eye } from 'lucide-react';
+
+type BackgroundType = 'image' | 'color';
+
+type PageElement = {
+  id: string;
+  type: 'text' | 'image' | 'shape';
+  content?: string; // texto para type=text
+  src?: string; // url para type=image
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  zIndex?: number;
+  styles?: Record<string, any>;
+};
+
+type DesignPage = {
+  background?: { type: BackgroundType; value: string };
+  sections?: { key: 'header' | 'body' | 'footer'; text: string }[];
+  elements?: PageElement[];
+};
 
 export default function InvitationEditorPage() {
   const params = useParams();
   const id = params?.id as string;
 
   const [invitation, setInvitation] = useState<Invitation | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  type ColorKey = 'primary' | 'secondary' | 'accent' | 'text';
-  type EditableDesign = {
-    colors?: Partial<Record<ColorKey, string>>;
-    fonts?: { heading?: string; body?: string };
-    layout?: string;
-    content?: { header?: string; body?: string; footer?: string; images?: string[] };
-  };
+  const [error, setError] = useState<string | null>(null);
 
-  const [designData, setDesignData] = useState<EditableDesign>({
-    colors: { primary: '#8b5cf6', secondary: '#f59e0b', accent: '#ec4899', text: '#1f2937' },
-    fonts: { heading: 'serif', body: 'sans-serif' },
-    layout: 'classic',
-    content: { header: '', body: '', footer: '', images: [] },
-  });
+  const [pages, setPages] = useState<DesignPage[]>([]);
+  const [selectedPage, setSelectedPage] = useState(0);
+  const [importTemplateId, setImportTemplateId] = useState<string>('');
 
   useEffect(() => {
-    const loadInvitation = async () => {
+    const load = async () => {
       try {
         setLoading(true);
-        const data = await invitationService.getInvitationById(id);
-        setInvitation(data);
-        if (data.customDesign) setDesignData(data.customDesign as unknown as EditableDesign);
-      } catch (err: unknown) {
-        console.error('Error cargando invitación:', err);
+        setError(null);
+        const inv = await invitationService.getInvitationById(id);
+        setInvitation(inv);
+        const allTpl = await templateService.getTemplates();
+        setTemplates(allTpl);
+
+        const initialPages: DesignPage[] =
+          (inv.customDesign as any)?.pages || (inv.templateId ? (await templateService.getTemplateById(inv.templateId)).design.pages || [] : []);
+
+        setPages(initialPages?.length ? initialPages : [
+          { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] },
+        ]);
+      } catch (err) {
+        console.error('Error cargando editor de invitación:', err);
+        const message = err instanceof Error ? err.message : 'Error cargando datos';
+        setError(message);
       } finally {
         setLoading(false);
       }
     };
-    if (id) loadInvitation();
+    if (id) load();
   }, [id]);
+
+  const addPage = () => {
+    setPages((p) => [...p, { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] }]);
+    setSelectedPage(pages.length);
+  };
+
+  const removePage = (idx: number) => {
+    setPages((p) => p.filter((_, i) => i !== idx));
+    setSelectedPage((sp) => (sp > 0 ? sp - 1 : 0));
+  };
+
+  const updateBackground = (idx: number, type: BackgroundType, value: string) => {
+    setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, background: { type, value } } : pg)));
+  };
+
+  const updateSectionText = (idx: number, key: 'header' | 'body' | 'footer', text: string) => {
+    setPages((p) => p.map((pg, i) => {
+      if (i !== idx) return pg;
+      const sections = pg.sections || [];
+      const exists = sections.find((s) => s.key === key);
+      if (exists) {
+        return { ...pg, sections: sections.map((s) => (s.key === key ? { ...s, text } : s)) };
+      }
+      return { ...pg, sections: [...sections, { key, text }] };
+    }));
+  };
+
+  const addTextElement = (idx: number) => {
+    const newEl: PageElement = {
+      id: `el-${Date.now()}`,
+      type: 'text',
+      content: 'Nuevo texto',
+      x: 20,
+      y: 20,
+      zIndex: 1,
+      styles: { color: '#111111', fontSize: 16, fontWeight: 'normal' },
+    };
+    setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
+  };
+
+  const addImageElement = (idx: number, url: string) => {
+    const newEl: PageElement = {
+      id: `el-${Date.now()}`,
+      type: 'image',
+      src: url,
+      x: 0,
+      y: 0,
+      width: 360,
+      height: 640,
+      zIndex: 0,
+      styles: { objectFit: 'cover' },
+    };
+    setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
+  };
+
+  const updateElement = (pageIdx: number, elId: string, patch: Partial<PageElement>) => {
+    setPages((p) => p.map((pg, i) => {
+      if (i !== pageIdx) return pg;
+      return {
+        ...pg,
+        elements: (pg.elements || []).map((el) => (el.id === elId ? { ...el, ...patch, styles: { ...el.styles, ...(patch.styles || {}) } } : el)),
+      };
+    }));
+  };
+
+  const removeElement = (pageIdx: number, elId: string) => {
+    setPages((p) => p.map((pg, i) => (i === pageIdx ? { ...pg, elements: (pg.elements || []).filter((el) => el.id !== elId) } : pg)));
+  };
+
+  const importPagesFromTemplate = async (templateId: string) => {
+    if (!templateId) return;
+    try {
+      const tpl = await templateService.getTemplateById(templateId);
+      const incoming = tpl.design.pages || [];
+      if (!incoming.length) return;
+      setPages((p) => [...p, ...incoming.map((pg) => ({ ...pg }))]);
+      setImportTemplateId('');
+    } catch (err) {
+      console.error('Error importando páginas del template:', err);
+      alert('No se pudo importar páginas');
+    }
+  };
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      await invitationService.updateInvitationDesign(id, designData);
-    } catch (err: unknown) {
+      await invitationService.updateInvitationDesign(id, { pages });
+      alert('Diseño guardado');
+    } catch (err) {
       console.error('Error guardando diseño:', err);
       alert('No se pudo guardar el diseño');
     } finally {
@@ -58,103 +168,204 @@ export default function InvitationEditorPage() {
   };
 
   const previewStyle = useMemo(() => ({
-    background: `linear-gradient(135deg, ${designData?.colors?.primary || '#8b5cf6'}, ${designData?.colors?.secondary || '#f59e0b'})`,
-    color: designData?.colors?.text || '#ffffff',
-    fontFamily: designData?.fonts?.body || 'sans-serif',
-  }), [designData]);
+    width: 360,
+    height: 640,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative' as const,
+    border: '1px solid #e5e7eb',
+    background: '#ffffff',
+  }), []);
 
-  const colorKeys: ColorKey[] = ['primary','secondary','accent','text'];
+  const currentPage = pages[selectedPage];
+  const backgroundStyle = currentPage?.background?.type === 'image'
+    ? { backgroundImage: `url(${currentPage.background?.value || ''})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: currentPage?.background?.value || '#ffffff' };
 
   return (
     <OrganizerProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-celebrity-purple/5 via-white to-celebrity-pink/5">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold font-serif text-celebrity-gray-900">Editor de Invitación</h1>
-              <p className="text-celebrity-gray-600">Edita visualmente tu diseño y guarda cambios</p>
-            </div>
-            <div className="space-x-2">
-              <Button variant="outline" onClick={handleSave} loading={saving}>
-                <Save className="w-4 h-4 mr-2" />
-                Guardar diseño
-              </Button>
-              <Button onClick={() => window.open(`/panel/invitaciones/${id}/vista`, '_blank')}>
-                <Eye className="w-4 h-4 mr-2" />
-                Ver Previa
-              </Button>
+      <div className="flex h-screen bg-celebrity-gray-50">
+        <Sidebar />
+        <div className="flex-1 overflow-auto">
+          <div className="bg-white border-b border-celebrity-gray-200 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold font-serif text-celebrity-gray-900">Editar Invitación</h1>
+                <p className="text-celebrity-gray-600 mt-1">Personaliza las páginas y elementos de tu diseño</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleSave} loading={saving} className="celebrity-gradient text-white">
+                  <Save className="w-4 h-4 mr-2" /> Guardar diseño
+                </Button>
+              </div>
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-celebrity-purple"></div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Panel izquierdo: controles */}
-              <div className="lg:col-span-1 space-y-6">
-                {/* Colores */}
-                <div className="celebrity-card p-4">
-                  <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Colores</h3>
-                  <div className="space-y-3">
-                    {colorKeys.map((key) => (
-                      <div key={key}>
-                        <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">{key}</label>
-                        <input type="color" value={designData?.colors?.[key] || '#000000'} onChange={(e) => setDesignData((prev: EditableDesign) => ({ ...prev, colors: { ...(prev.colors || {}), [key]: e.target.value } }))} className="w-full h-10 rounded border border-celebrity-gray-300" />
+          <div className="px-8 py-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Controles */}
+            <div className="celebrity-card p-6 xl:col-span-2">
+              {loading ? (
+                <div className="py-12 text-center text-celebrity-gray-600">Cargando…</div>
+              ) : error ? (
+                <div className="py-12 text-red-700 bg-red-50 rounded">{error}</div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Lista de páginas */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-celebrity-gray-900">Páginas</h3>
+                      <Button variant="outline" onClick={addPage}><Plus className="w-4 h-4 mr-2" /> Agregar página</Button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {pages.map((pg, idx) => (
+                        <div key={idx} className={`cursor-pointer rounded border ${idx === selectedPage ? 'border-celebrity-purple' : 'border-celebrity-gray-200'}`} onClick={() => setSelectedPage(idx)}>
+                          <div style={{ width: 120, height: 200, ...(
+                            pg.background?.type === 'image' ? { backgroundImage: `url(${pg.background?.value})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: pg.background?.value || '#ffffff' }
+                          ) }} />
+                          <div className="p-2 flex items-center justify-between text-xs">
+                            <span>Página {idx + 1}</span>
+                            <button className="text-red-600" onClick={(e) => { e.stopPropagation(); removePage(idx); }}><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Importar desde templates */}
+                    <div className="mt-6">
+                      <h4 className="text-sm font-medium text-celebrity-gray-900 mb-2">Importar páginas desde template</h4>
+                      <div className="flex gap-2">
+                        <select className="px-3 py-2 border border-celebrity-gray-300 rounded flex-1" value={importTemplateId} onChange={(e) => setImportTemplateId(e.target.value)}>
+                          <option value="">Selecciona un template</option>
+                          {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                        <Button variant="outline" onClick={() => importPagesFromTemplate(importTemplateId)}>Importar</Button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Tipografías */}
-                <div className="celebrity-card p-4">
-                  <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Tipografías</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Heading</label>
-                      <select value={designData?.fonts?.heading || 'serif'} onChange={(e) => setDesignData((prev: EditableDesign) => ({ ...prev, fonts: { ...(prev.fonts || {}), heading: e.target.value } }))} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded">
-                        <option value="serif">Serif</option>
-                        <option value="sans-serif">Sans Serif</option>
-                        <option value="monospace">Monospace</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-celebrity-gray-700 mb-2">Body</label>
-                      <select value={designData?.fonts?.body || 'sans-serif'} onChange={(e) => setDesignData((prev: EditableDesign) => ({ ...prev, fonts: { ...(prev.fonts || {}), body: e.target.value } }))} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded">
-                        <option value="serif">Serif</option>
-                        <option value="sans-serif">Sans Serif</option>
-                        <option value="monospace">Monospace</option>
-                      </select>
+                      <p className="text-xs text-celebrity-gray-500 mt-1">Puedes importar de varios templates; las páginas se agregan a tu diseño.</p>
                     </div>
                   </div>
-                </div>
-                {/* Contenido */}
-                <div className="celebrity-card p-4">
-                  <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Contenido</h3>
-                  <div className="space-y-3">
-                    <input type="text" placeholder="Encabezado" value={designData?.content?.header || ''} onChange={(e) => setDesignData((prev: EditableDesign) => ({ ...prev, content: { ...(prev.content || {}), header: e.target.value } }))} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" />
-                    <textarea placeholder="Cuerpo" value={designData?.content?.body || ''} onChange={(e) => setDesignData((prev: EditableDesign) => ({ ...prev, content: { ...(prev.content || {}), body: e.target.value } }))} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded h-24" />
-                    <input type="text" placeholder="Pie de página" value={designData?.content?.footer || ''} onChange={(e) => setDesignData((prev: EditableDesign) => ({ ...prev, content: { ...(prev.content || {}), footer: e.target.value } }))} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" />
-                  </div>
-                </div>
-              </div>
-              {/* Panel derecho: vista previa */}
-              <div className="lg:col-span-2">
-                <div className="celebrity-card p-6">
-                  <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-4">Vista previa</h3>
-                  <div className="h-[420px] rounded-lg flex items-center justify-center" style={previewStyle}>
-                    <div className="text-center" style={{ fontFamily: designData?.fonts?.heading || 'serif' }}>
-                      <Sparkles className="w-12 h-12 mx-auto mb-4" />
-                      <h2 className="text-3xl font-bold mb-2">{invitation?.title || 'Tu invitación'}</h2>
-                      {designData?.content?.header && <p className="text-lg mb-2">{designData.content.header}</p>}
-                      {designData?.content?.body && <p className="max-w-xl mx-auto">{designData.content.body}</p>}
-                      {designData?.content?.footer && <p className="text-sm mt-4 opacity-80">{designData.content.footer}</p>}
+
+                  {/* Configuración de página seleccionada */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Fondo y secciones</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Tipo de fondo</label>
+                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.background?.type || 'color'} onChange={(e) => updateBackground(selectedPage, e.target.value as BackgroundType, currentPage?.background?.value || '')}>
+                          <option value="image">Imagen (URL)</option>
+                          <option value="color">Color</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Valor</label>
+                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" placeholder="https://... o #f0e6dc" value={currentPage?.background?.value || ''} onChange={(e) => updateBackground(selectedPage, currentPage?.background?.type || 'color', e.target.value)} />
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Header</label>
+                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.sections?.find((s) => s.key === 'header')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'header', e.target.value)} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Body</label>
+                        <textarea rows={3} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.sections?.find((s) => s.key === 'body')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'body', e.target.value)} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Footer</label>
+                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.sections?.find((s) => s.key === 'footer')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'footer', e.target.value)} />
+                      </div>
+
+                      {/* Elementos */}
+                      <div className="col-span-2 mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-semibold">Elementos</h4>
+                          <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => addTextElement(selectedPage)}><Plus className="w-4 h-4 mr-2" /> Texto</Button>
+                            <Button variant="outline" onClick={() => {
+                              const url = prompt('URL de imagen (Google Drive u otra):');
+                              if (url) addImageElement(selectedPage, url);
+                            }}>Imagen (URL)</Button>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          {(currentPage?.elements || []).map((el) => (
+                            <div key={el.id} className="border border-celebrity-gray-200 rounded p-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-celebrity-gray-600">{el.type.toUpperCase()}</span>
+                                <button className="text-red-600" onClick={() => removeElement(selectedPage, el.id)}><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                              {el.type === 'text' ? (
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                  <input className="col-span-2 px-3 py-2 border border-celebrity-gray-300 rounded" value={el.content || ''} onChange={(e) => updateElement(selectedPage, el.id, { content: e.target.value })} />
+                                  <label className="text-xs">Color</label>
+                                  <input type="color" value={(el.styles?.color as string) || '#111111'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { color: e.target.value } })} />
+                                  <label className="text-xs">Tamaño</label>
+                                  <input type="number" value={(el.styles?.fontSize as number) || 16} onChange={(e) => updateElement(selectedPage, el.id, { styles: { fontSize: Number(e.target.value) } })} />
+                                </div>
+                              ) : el.type === 'image' ? (
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                  <input className="col-span-2 px-3 py-2 border border-celebrity-gray-300 rounded" value={el.src || ''} onChange={(e) => updateElement(selectedPage, el.id, { src: e.target.value })} />
+                                  <label className="text-xs">Ancho</label>
+                                  <input type="number" value={el.width || 100} onChange={(e) => updateElement(selectedPage, el.id, { width: Number(e.target.value) })} />
+                                  <label className="text-xs">Alto</label>
+                                  <input type="number" value={el.height || 100} onChange={(e) => updateElement(selectedPage, el.id, { height: Number(e.target.value) })} />
+                                </div>
+                              ) : null}
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                <label className="text-xs">X</label>
+                                <input type="number" value={el.x} onChange={(e) => updateElement(selectedPage, el.id, { x: Number(e.target.value) })} />
+                                <label className="text-xs">Y</label>
+                                <input type="number" value={el.y} onChange={(e) => updateElement(selectedPage, el.id, { y: Number(e.target.value) })} />
+                                <label className="text-xs">Rotación</label>
+                                <input type="number" value={el.rotation || 0} onChange={(e) => updateElement(selectedPage, el.id, { rotation: Number(e.target.value) })} />
+                                <label className="text-xs">Z-Index</label>
+                                <input type="number" value={el.zIndex || 1} onChange={(e) => updateElement(selectedPage, el.id, { zIndex: Number(e.target.value) })} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          )}
+
+            {/* Previsualización */}
+            <div className="celebrity-card p-6 xl:col-span-1">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-celebrity-gray-900">Vista previa</h3>
+                <Eye className="w-5 h-5 text-celebrity-purple" />
+              </div>
+              <div className="mx-auto" style={previewStyle}>
+                <div className="absolute inset-0" style={backgroundStyle} />
+                <div className="absolute inset-0 p-3">
+                  {/* Secciones */}
+                  <div className="absolute left-3 top-3 text-xl font-serif font-bold" style={{ color: '#1f2937' }}>{currentPage?.sections?.find((s) => s.key === 'header')?.text}</div>
+                  <div className="absolute left-3 right-3 top-14 text-sm" style={{ color: '#374151' }}>{currentPage?.sections?.find((s) => s.key === 'body')?.text}</div>
+                  <div className="absolute left-3 bottom-3 text-xs opacity-80" style={{ color: '#6b7280' }}>{currentPage?.sections?.find((s) => s.key === 'footer')?.text}</div>
+
+                  {/* Elementos */}
+                  {(currentPage?.elements || []).map((el) => {
+                    const style: React.CSSProperties = {
+                      position: 'absolute',
+                      left: el.x,
+                      top: el.y,
+                      zIndex: el.zIndex || 1,
+                      transform: `rotate(${el.rotation || 0}deg)`,
+                      ...(el.styles || {}),
+                    };
+                    if (el.type === 'text') {
+                      return <div key={el.id} style={style}>{el.content}</div>;
+                    }
+                    if (el.type === 'image') {
+                      return <img key={el.id} src={el.src} alt="" style={{ ...style, width: el.width || 100, height: el.height || 100 }} />;
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+              <p className="text-xs text-celebrity-gray-500 mt-2">Sugerencia: usa URLs públicas de imagen (Drive, CDN) para el fondo.</p>
+            </div>
+          </div>
         </div>
       </div>
     </OrganizerProtectedRoute>

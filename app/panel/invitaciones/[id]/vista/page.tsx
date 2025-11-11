@@ -15,6 +15,10 @@ type EditableDesign = {
   fonts?: { heading?: string; body?: string };
   layout?: string;
   content?: { header?: string; body?: string; footer?: string; images?: string[] };
+  pages?: Array<{
+    background?: { type: 'color' | 'image'; value: string };
+    sections?: Array<{ key: string; text?: string }>;
+  }>;
 };
 
 export default function InvitationPreviewPage() {
@@ -87,11 +91,33 @@ export default function InvitationPreviewPage() {
           </div>
 
           <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Vista previa principal */}
+            {/* Vista previa principal (multi-página si existe) */}
             <div className="lg:col-span-2 celebrity-card p-6">
               {loading ? (
                 <div className="flex justify-center items-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-celebrity-purple"></div>
+                </div>
+              ) : designData?.pages && designData.pages.length > 0 ? (
+                <div className="space-y-6">
+                  {designData.pages.map((page, idx) => {
+                    const style = page.background?.type === 'image'
+                      ? { backgroundImage: `url(${page.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                      : { background: page.background?.value || '#ffffff' };
+                    const header = page.sections?.find((s) => s.key === 'header')?.text || '';
+                    const body = page.sections?.find((s) => s.key === 'body')?.text || '';
+                    const footer = page.sections?.find((s) => s.key === 'footer')?.text || '';
+                    return (
+                      <div key={idx} className="mx-auto" style={{ width: 360, height: 640 }}>
+                        <div className="rounded-lg border border-celebrity-gray-200 overflow-hidden" style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
+                          <div className="absolute inset-0 p-4 flex flex-col justify-between">
+                            <div className="text-xl font-serif font-bold text-celebrity-gray-900">{header}</div>
+                            <div className="text-sm text-celebrity-gray-800">{body}</div>
+                            <div className="text-xs opacity-80 text-celebrity-gray-700">{footer}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="h-[480px] rounded-lg flex items-center justify-center" style={previewStyle}>

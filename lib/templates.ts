@@ -35,6 +35,23 @@ export interface Template {
     };
     layout: string;
     customCss?: string;
+    pages?: Array<{
+      background?: { type: 'color' | 'image'; value: string };
+      sections?: Array<{ key: string; text?: string }>;
+      elements?: Array<{
+        id: string;
+        type: 'text' | 'image' | 'shape';
+        content?: string; // para texto
+        src?: string; // para imagenes por URL
+        x: number; // posición relativa en px
+        y: number;
+        width?: number;
+        height?: number;
+        rotation?: number;
+        zIndex?: number;
+        style?: Record<string, string>;
+      }>;
+    }>;
   };
   content?: {
     header?: string;

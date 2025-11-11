@@ -7,12 +7,13 @@ import { OrganizerProtectedRoute } from '@/components/OrganizerProtectedRoute';
 import { Sidebar } from '@/components/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { invitationService, Invitation, InvitationStatus } from '@/lib/invitations';
-import { Sparkles, Calendar, Edit3, Eye } from 'lucide-react';
+import { Sparkles, Calendar, Edit3, Eye, Trash2 } from 'lucide-react';
 
 export default function PanelInvitacionesPage() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadInvitations = async () => {
@@ -42,6 +43,26 @@ export default function PanelInvitacionesPage() {
     if (d === null || d === undefined) return '-';
     const date = d instanceof Date ? d : new Date(d);
     return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const confirmed = window.confirm('¿Seguro que deseas eliminar esta invitación?');
+      if (!confirmed) return;
+      setDeletingId(id);
+      await invitationService.deleteInvitation(id);
+      setInvitations((prev) => prev.filter((inv) => inv.id !== id));
+    } catch (err) {
+      console.error('Error eliminando invitación:', err);
+      const message = axios.isAxiosError(err)
+        ? err.response?.data?.message ?? err.message
+        : err instanceof Error
+        ? err.message
+        : 'No se pudo eliminar la invitación';
+      alert(message);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -130,6 +151,14 @@ export default function PanelInvitacionesPage() {
                             <Eye className="w-4 h-4 mr-2" /> Ver previa
                           </Button>
                         </Link>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleDelete(inv.id)}
+                          disabled={deletingId === inv.id}
+                          className={deletingId === inv.id ? 'opacity-60 cursor-not-allowed' : ''}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> {deletingId === inv.id ? 'Eliminando…' : 'Eliminar'}
+                        </Button>
                       </div>
                     </div>
                   );
