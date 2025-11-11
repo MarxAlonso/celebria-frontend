@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { invitationService, Invitation } from '@/lib/invitations';
 import { templateService, Template } from '@/lib/templates';
+import { eventService, Event } from '@/lib/events';
 import { Plus, Save, Trash2, Eye } from 'lucide-react';
 
 type BackgroundType = 'image' | 'color';
@@ -44,6 +45,9 @@ export default function InvitationEditorPage() {
   const [pages, setPages] = useState<DesignPage[]>([]);
   const [selectedPage, setSelectedPage] = useState(0);
   const [importTemplateId, setImportTemplateId] = useState<string>('');
+  const [event, setEvent] = useState<Event | null>(null);
+  const [layout, setLayout] = useState<string>('template');
+  const [fonts, setFonts] = useState<{ heading: string; body: string }>({ heading: 'serif', body: 'sans-serif' });
 
   useEffect(() => {
     const load = async () => {
@@ -52,15 +56,63 @@ export default function InvitationEditorPage() {
         setError(null);
         const inv = await invitationService.getInvitationById(id);
         setInvitation(inv);
+
+        // Cargar templates disponibles
         const allTpl = await templateService.getTemplates();
         setTemplates(allTpl);
 
+        // Cargar evento asociado si existe
+        let ev: Event | null = null;
+        if (inv.eventId) {
+          try {
+            ev = await eventService.getEventById(inv.eventId);
+            setEvent(ev);
+          } catch (err) {
+            console.error('Error cargando evento asociado:', err);
+          }
+        }
+
+        // Determinar páginas iniciales (custom o template)
         const initialPages: DesignPage[] =
           (inv.customDesign as any)?.pages || (inv.templateId ? (await templateService.getTemplateById(inv.templateId)).design.pages || [] : []);
 
-        setPages(initialPages?.length ? initialPages : [
-          { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] },
-        ]);
+        // Establecer layout desde customDesign o template si existe
+        const initialLayout = (inv.customDesign as any)?.layout || (inv.templateId ? (await templateService.getTemplateById(inv.templateId)).design.layout : undefined) || 'template';
+        setLayout(initialLayout);
+
+        const tplFonts = inv.templateId ? (await templateService.getTemplateById(inv.templateId)).design.fonts : undefined;
+        const initialFonts = (inv.customDesign as any)?.fonts || tplFonts || { heading: 'serif', body: 'sans-serif' };
+        setFonts(initialFonts);
+
+        // Inyectar detalles del evento al body si procede
+        const pagesWithEvent = (() => {
+          const base = initialPages?.length ? initialPages : [
+            { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] },
+          ];
+          if (!ev) return base;
+          const dateStr = ev.eventDate ? new Date(ev.eventDate).toLocaleDateString() : '';
+          const infoLineParts = [ev.title || '', dateStr, ev.location || ''].filter(Boolean);
+          const infoLine = infoLineParts.join(' • ');
+          const desc = ev.description || '';
+          const details = [infoLine, desc].filter(Boolean).join('\n');
+          const pg0 = base[0] || { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] };
+          const bodySec = (pg0.sections || []).find((s) => s.key === 'body');
+          const bodyText = bodySec?.text || '';
+          const alreadyHasInfo = bodyText.includes(ev.title || '') || bodyText.includes(dateStr) || bodyText.includes(ev.location || '');
+          const newBody = alreadyHasInfo ? bodyText : [bodyText, details].filter(Boolean).join('\n\n');
+          const newSections = (() => {
+            const sections = pg0.sections || [];
+            const idx = sections.findIndex((s) => s.key === 'body');
+            if (idx >= 0) sections[idx] = { ...sections[idx], text: newBody };
+            else sections.push({ key: 'body', text: newBody });
+            return sections;
+          })();
+          const updatedPg0 = { ...pg0, sections: newSections };
+          const rest = base.slice(1);
+          return [updatedPg0, ...rest];
+        })();
+
+        setPages(pagesWithEvent);
       } catch (err) {
         console.error('Error cargando editor de invitación:', err);
         const message = err instanceof Error ? err.message : 'Error cargando datos';
@@ -157,7 +209,7 @@ export default function InvitationEditorPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await invitationService.updateInvitationDesign(id, { pages });
+      await invitationService.updateInvitationDesign(id, { pages, layout, fonts });
       alert('Diseño guardado');
     } catch (err) {
       console.error('Error guardando diseño:', err);
@@ -247,6 +299,35 @@ export default function InvitationEditorPage() {
                   {/* Configuración de página seleccionada */}
                   <div>
                     <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Fondo y secciones</h3>
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Estilo de encabezado</label>
+                      <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={layout} onChange={(e) => setLayout(e.target.value)}>
+                        <option value="template">Plantilla (arriba a la izquierda)</option>
+                        <option value="centered-header">Centrado medio (encabezado grande y centrado)</option>
+                      </select>
+                    </div>
+                    <div className="mb-3 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Fuente de encabezado</label>
+                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={fonts.heading} onChange={(e) => setFonts((f) => ({ ...f, heading: e.target.value }))}>
+                          <option value="serif">Serif</option>
+                          <option value="sans-serif">Sans-serif</option>
+                          <option value="monospace">Monospace</option>
+                          <option value="cursive">Cursive</option>
+                          <option value="fantasy">Fantasy</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Fuente de cuerpo</label>
+                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={fonts.body} onChange={(e) => setFonts((f) => ({ ...f, body: e.target.value }))}>
+                          <option value="sans-serif">Sans-serif</option>
+                          <option value="serif">Serif</option>
+                          <option value="monospace">Monospace</option>
+                          <option value="cursive">Cursive</option>
+                          <option value="fantasy">Fantasy</option>
+                        </select>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Tipo de fondo</label>
@@ -339,8 +420,17 @@ export default function InvitationEditorPage() {
                 <div className="absolute inset-0" style={backgroundStyle} />
                 <div className="absolute inset-0 p-3">
                   {/* Secciones */}
-                  <div className="absolute left-3 top-3 text-xl font-serif font-bold" style={{ color: '#1f2937' }}>{currentPage?.sections?.find((s) => s.key === 'header')?.text}</div>
-                  <div className="absolute left-3 right-3 top-14 text-sm" style={{ color: '#374151' }}>{currentPage?.sections?.find((s) => s.key === 'body')?.text}</div>
+                  {layout === 'centered-header' ? (
+                    <>
+                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 text-3xl font-bold text-center" style={{ color: '#1f2937', fontFamily: fonts.heading }}>{currentPage?.sections?.find((s) => s.key === 'header')?.text}</div>
+                      <div className="absolute left-4 right-4 top-[60%] text-sm text-center whitespace-pre-line" style={{ color: '#374151', fontFamily: fonts.body }}>{currentPage?.sections?.find((s) => s.key === 'body')?.text}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="absolute left-3 top-3 text-xl font-bold" style={{ color: '#1f2937', fontFamily: fonts.heading }}>{currentPage?.sections?.find((s) => s.key === 'header')?.text}</div>
+                      <div className="absolute left-3 right-3 top-14 text-sm whitespace-pre-line" style={{ color: '#374151', fontFamily: fonts.body }}>{currentPage?.sections?.find((s) => s.key === 'body')?.text}</div>
+                    </>
+                  )}
                   <div className="absolute left-3 bottom-3 text-xs opacity-80" style={{ color: '#6b7280' }}>{currentPage?.sections?.find((s) => s.key === 'footer')?.text}</div>
 
                   {/* Elementos */}

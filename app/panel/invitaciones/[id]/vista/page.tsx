@@ -106,13 +106,66 @@ export default function InvitationPreviewPage() {
                     const header = page.sections?.find((s) => s.key === 'header')?.text || '';
                     const body = page.sections?.find((s) => s.key === 'body')?.text || '';
                     const footer = page.sections?.find((s) => s.key === 'footer')?.text || '';
+                    // Componer detalles del evento para asegurar que aparecen en la vista
+                    const dateStr = event?.eventDate ? new Date(event.eventDate).toLocaleDateString() : '';
+                    const infoLineParts = [event?.title || '', dateStr, event?.location || ''].filter(Boolean);
+                    const infoLine = infoLineParts.join(' • ');
+                    const desc = event?.description || '';
+                    const details = [infoLine, desc].filter(Boolean).join('\n');
+                    const alreadyIncluded = body.includes(event?.title || '') || body.includes(dateStr) || body.includes(event?.location || '');
+                    const enhancedBody = alreadyIncluded ? body : [body, details].filter(Boolean).join('\n\n');
+                    const isCentered = designData?.layout === 'centered-header';
                     return (
                       <div key={idx} className="mx-auto" style={{ width: 360, height: 640 }}>
                         <div className="rounded-lg border border-celebrity-gray-200 overflow-hidden" style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
-                          <div className="absolute inset-0 p-4 flex flex-col justify-between">
-                            <div className="text-xl font-serif font-bold text-celebrity-gray-900">{header}</div>
-                            <div className="text-sm text-celebrity-gray-800">{body}</div>
-                            <div className="text-xs opacity-80 text-celebrity-gray-700">{footer}</div>
+                          <div className="absolute inset-0 p-4">
+                            {isCentered ? (
+                              <>
+                                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 text-3xl font-bold text-center text-celebrity-gray-900" style={{ fontFamily: designData?.fonts?.heading || 'serif' }}>{header}</div>
+                                <div className="absolute left-4 right-4 top-[60%] text-sm text-center whitespace-pre-line text-celebrity-gray-800" style={{ fontFamily: designData?.fonts?.body || 'sans-serif' }}>{enhancedBody}</div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-xl font-bold text-celebrity-gray-900" style={{ fontFamily: designData?.fonts?.heading || 'serif' }}>{header}</div>
+                                <div className="mt-4 text-sm whitespace-pre-line text-celebrity-gray-800" style={{ fontFamily: designData?.fonts?.body || 'sans-serif' }}>{enhancedBody}</div>
+                              </>
+                            )}
+                            <div className="absolute left-4 right-4 bottom-4 text-xs opacity-80 text-celebrity-gray-700">{footer}</div>
+
+                            {/* Elementos dinámicos (texto/imágenes) guardados en las páginas */}
+                            {(page.elements || []).map((el) => {
+                              const baseStyle: React.CSSProperties = {
+                                position: 'absolute',
+                                left: el.x,
+                                top: el.y,
+                                zIndex: el.zIndex || 1,
+                                transform: `rotate(${el.rotation || 0}deg)`,
+                                ...(el.styles || {}),
+                              };
+                              if (el.type === 'text') {
+                                return (
+                                  <div key={el.id} style={{ ...baseStyle, fontFamily: (el.styles?.fontFamily as string) || designData?.fonts?.body || 'sans-serif' }}>
+                                    {el.content}
+                                  </div>
+                                );
+                              }
+                              if (el.type === 'image') {
+                                return (
+                                  <img
+                                    key={el.id}
+                                    src={el.src}
+                                    alt=""
+                                    style={{
+                                      ...baseStyle,
+                                      width: el.width || 100,
+                                      height: el.height || 100,
+                                      objectFit: (el.styles?.objectFit as string) || 'cover',
+                                    }}
+                                  />
+                                );
+                              }
+                              return null;
+                            })}
                           </div>
                         </div>
                       </div>
@@ -125,7 +178,10 @@ export default function InvitationPreviewPage() {
                     <Sparkles className="w-12 h-12 mx-auto mb-4" />
                     <h2 className="text-3xl font-bold mb-2">{invitation?.title || 'Tu invitación'}</h2>
                     {designData?.content?.header && <p className="text-lg mb-2">{designData.content.header}</p>}
-                    {designData?.content?.body && <p className="max-w-xl mx-auto">{designData.content.body}</p>}
+                    {/* Añadir datos del evento en la vista básica */}
+                    <div className="max-w-xl mx-auto whitespace-pre-line">
+                      {[designData?.content?.body, [event?.title, event?.eventDate ? new Date(event.eventDate).toLocaleDateString() : '', event?.location].filter(Boolean).join(' • '), event?.description].filter(Boolean).join('\n\n')}
+                    </div>
                     {designData?.content?.footer && <p className="text-sm mt-4 opacity-80">{designData.content.footer}</p>}
                   </div>
                 </div>
