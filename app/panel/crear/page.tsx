@@ -257,7 +257,24 @@ export default function PanelCreateInvitationPage() {
         return;
       }
       // Construir diseño inicial con páginas y contenido mapeado
-      const pages = (designData.pages ?? []).map((pg: EditableDesign['pages'][number]) => ({ ...pg }));
+      const pages: {
+  background?: { type: 'image' | 'color'; value: string };
+  sections?: { key: 'header' | 'body' | 'footer'; text: string }[];
+  elements?: {
+    id: string;
+    type: 'text' | 'image' | 'shape';
+    content?: string;
+    src?: string;
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+    rotation?: number;
+    zIndex?: number;
+    styles?: Record<string, any>;
+  }[];
+}[] = (designData.pages ?? []).map(pg => ({ ...pg }));
+
 
       const ensurePage = (i: number) => {
         if (!pages[i]) pages[i] = { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] };
