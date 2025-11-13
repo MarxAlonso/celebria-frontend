@@ -259,8 +259,7 @@ export default function PanelCreateInvitationPage() {
       // Construir diseño inicial con páginas y contenido mapeado
       type Page = NonNullable<EditableDesign['pages']>[number];
 
-      const pages: Page[] = (designData.pages || []).map((pg) => ({ ...pg }));
-
+      const pages: Page[] = (designData.pages ?? []).map((pg: Page) => ({ ...pg }));
 
       const ensurePage = (i: number) => {
         if (!pages[i]) pages[i] = { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] };
