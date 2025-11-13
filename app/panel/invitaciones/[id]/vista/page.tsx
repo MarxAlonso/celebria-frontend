@@ -10,6 +10,20 @@ import { eventService, Event } from '@/lib/events';
 import { Sparkles, Eye, TrendingUp } from 'lucide-react';
 
 type ColorKey = 'primary' | 'secondary' | 'accent' | 'text';
+type PageElement = {
+  id: string;
+  type: 'text' | 'image';
+  x: number;
+  y: number;
+  zIndex?: number;
+  rotation?: number;
+  content?: string;   // para tipo 'text'
+  src?: string;       // para tipo 'image'
+  width?: number;
+  height?: number;
+  styles?: React.CSSProperties;
+};
+
 type EditableDesign = {
   colors?: Partial<Record<ColorKey, string>>;
   fonts?: { heading?: string; body?: string };
@@ -18,6 +32,7 @@ type EditableDesign = {
   pages?: Array<{
     background?: { type: 'color' | 'image'; value: string };
     sections?: Array<{ key: string; text?: string }>;
+    elements?: PageElement[]; // <-- aquí agregamos elements
   }>;
 };
 
