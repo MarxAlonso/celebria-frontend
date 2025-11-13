@@ -88,20 +88,20 @@ export default function InvitationEditorPage() {
         // Inyectar detalles del evento al body si procede
         const pagesWithEvent: DesignPage[] = (() => {
         const base: DesignPage[] = (initialPages?.length ? initialPages : [
-          { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] },
-        ]).map((pg) => {
-          if (pg.background) {
-            const type: BackgroundType = pg.background.type === 'image' ? 'image' : 'color';
-            return {
-              ...pg,
-              background: {
-                type,
-                value: pg.background.value,
-              }
-            };
-          }
-          return pg;
-        });
+  { background: { type: 'color' as BackgroundType, value: '#ffffff' }, sections: [], elements: [] },
+]).map((pg) => {
+  if (pg.background) {
+    const type: BackgroundType = pg.background.type === 'image' ? 'image' : 'color';
+    return {
+      ...pg,
+      background: {
+        type,
+        value: pg.background.value,
+      },
+    };
+  }
+  return pg;
+});
 
   if (!ev) return base;
 
