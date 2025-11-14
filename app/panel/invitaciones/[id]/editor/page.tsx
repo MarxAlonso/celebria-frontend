@@ -49,6 +49,8 @@ export default function InvitationEditorPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [layout, setLayout] = useState<string>('template');
   const [fonts, setFonts] = useState<{ heading: string; body: string }>({ heading: 'serif', body: 'sans-serif' });
+  const [eventDraft, setEventDraft] = useState<Partial<Event> | null>(null);
+  const [savingEvent, setSavingEvent] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -68,6 +70,7 @@ export default function InvitationEditorPage() {
           try {
             ev = await eventService.getEventById(inv.eventId);
             setEvent(ev);
+            setEventDraft(ev);
           } catch (err) {
             console.error('Error cargando evento asociado:', err);
           }
@@ -254,6 +257,54 @@ export default function InvitationEditorPage() {
     alert('No se pudo importar páginas');
   }
 };
+
+  const syncEventDetailsIntoBody = () => {
+    if (!eventDraft) return;
+    setPages((p) => {
+      const arr = [...p];
+      const pg0 = arr[0] || { background: { type: 'color', value: '#ffffff' }, sections: [], elements: [] };
+      const dateStr = eventDraft.eventDate ? new Date(eventDraft.eventDate).toLocaleDateString() : '';
+      const infoLineParts = [eventDraft.title || '', dateStr, eventDraft.location || ''].filter(Boolean);
+      const infoLine = infoLineParts.join(' • ');
+      const desc = eventDraft.description || '';
+      const details = [infoLine, desc].filter(Boolean).join('\n');
+      const bodySec = (pg0.sections || []).find((s) => s.key === 'body');
+      const bodyText = bodySec?.text || '';
+      const alreadyHasInfo = bodyText.includes(eventDraft.title || '') || bodyText.includes(dateStr) || bodyText.includes(eventDraft.location || '');
+      const newBody = alreadyHasInfo ? [bodyText.split('\n\n')[0], details].filter(Boolean).join('\n\n') : [bodyText, details].filter(Boolean).join('\n\n');
+      const newSections = (() => {
+        const sections = pg0.sections || [];
+        const idx = sections.findIndex((s) => s.key === 'body');
+        if (idx >= 0) sections[idx] = { ...sections[idx], text: newBody };
+        else sections.push({ key: 'body', text: newBody });
+        return sections;
+      })();
+      arr[0] = { ...pg0, sections: newSections };
+      return arr;
+    });
+  };
+
+  const saveEventDraft = async () => {
+    if (!eventDraft?.id) return;
+    try {
+      setSavingEvent(true);
+      const payload = {
+        title: eventDraft.title,
+        description: eventDraft.description,
+        location: eventDraft.location,
+        eventDate: eventDraft.eventDate || (event?.eventDate ?? ''),
+      };
+      const updated = await eventService.updateEvent(eventDraft.id, payload);
+      setEvent(updated);
+      setEventDraft(updated);
+      alert('Evento actualizado');
+    } catch (err) {
+      console.error('Error actualizando evento:', err);
+      alert('No se pudo actualizar el evento');
+    } finally {
+      setSavingEvent(false);
+    }
+  };
 
 
   const handleSave = async () => {
@@ -450,6 +501,38 @@ export default function InvitationEditorPage() {
                   </div>
                 </div>
               )}
+              {/* Edición de evento asociado */}
+              <div className="mt-6 border-t border-celebrity-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Editar datos del evento</h3>
+                {!eventDraft ? (
+                  <div className="text-sm text-celebrity-gray-600">No hay evento asociado a esta invitación.</div>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Título</label>
+                      <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.title || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), title: e.target.value }))} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Fecha</label>
+                        <input type="date" className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={(eventDraft.eventDate || '').split('T')[0]} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), eventDate: new Date(e.target.value).toISOString() }))} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Ubicación</label>
+                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.location || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), location: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Descripción</label>
+                      <textarea rows={3} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.description || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), description: e.target.value }))} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={saveEventDraft} disabled={savingEvent}><Save className="w-4 h-4 mr-2" /> Guardar evento</Button>
+                      <Button variant="outline" onClick={syncEventDetailsIntoBody}><Eye className="w-4 h-4 mr-2" /> Sincronizar con el Body (pág. 1)</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Previsualización */}
