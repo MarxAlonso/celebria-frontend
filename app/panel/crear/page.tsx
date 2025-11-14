@@ -175,6 +175,17 @@ export default function PanelCreateInvitationPage() {
     });
   };
 
+  const movePage = (from: number, to: number) => {
+    setDesignData((prev: EditableDesign) => {
+      const arr = [ ...(((prev.pages || []) as any[]) || []) ];
+      if (to < 0 || to >= arr.length || from === to) return prev;
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      setSelectedPage(Math.max(0, to));
+      return { ...prev, pages: arr };
+    });
+  };
+
   const updateBackground = (idx: number, type: 'image' | 'color', value: string) => {
     setDesignData((prev: EditableDesign) => {
       const pages = ((prev.pages || []) as any[]).map((pg: any, i: number) => (i === idx ? { ...pg, background: { type, value } } : pg));
@@ -618,7 +629,11 @@ export default function PanelCreateInvitationPage() {
                       <div style={{ width: 120, height: 200, ...(pg?.background?.type === 'image' ? { backgroundImage: `url(${pg?.background?.value})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: pg?.background?.value || '#ffffff' }) }} />
                       <div className="p-2 flex items-center justify-between text-xs">
                         <span>Página {idx + 1}</span>
-                        <button className="text-red-600" onClick={(e) => { e.stopPropagation(); removePage(idx); }}>Eliminar</button>
+                        <div className="flex items-center gap-2">
+                          <button className="text-celebrity-gray-700" onClick={(e) => { e.stopPropagation(); movePage(idx, idx - 1); }} title="Subir">↑</button>
+                          <button className="text-celebrity-gray-700" onClick={(e) => { e.stopPropagation(); movePage(idx, idx + 1); }} title="Bajar">↓</button>
+                          <button className="text-red-600" onClick={(e) => { e.stopPropagation(); removePage(idx); }}>Eliminar</button>
+                        </div>
                       </div>
                     </div>
                   ))}

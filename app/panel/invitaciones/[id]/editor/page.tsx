@@ -157,6 +157,17 @@ export default function InvitationEditorPage() {
     setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, background: { type, value } } : pg)));
   };
 
+  const movePage = (from: number, to: number) => {
+    setPages((p) => {
+      const arr = [...p];
+      if (to < 0 || to >= arr.length || from === to) return arr;
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return arr;
+    });
+    setSelectedPage((_) => Math.max(0, to));
+  };
+
   const updateSectionText = (idx: number, key: 'header' | 'body' | 'footer', text: string) => {
     setPages((p) => p.map((pg, i) => {
       if (i !== idx) return pg;
@@ -303,7 +314,11 @@ export default function InvitationEditorPage() {
                           ) }} />
                           <div className="p-2 flex items-center justify-between text-xs">
                             <span>Página {idx + 1}</span>
-                            <button className="text-red-600" onClick={(e) => { e.stopPropagation(); removePage(idx); }}><Trash2 className="w-4 h-4" /></button>
+                            <div className="flex items-center gap-2">
+                              <button className="text-celebrity-gray-700" onClick={(e) => { e.stopPropagation(); movePage(idx, idx - 1); }} title="Subir">↑</button>
+                              <button className="text-celebrity-gray-700" onClick={(e) => { e.stopPropagation(); movePage(idx, idx + 1); }} title="Bajar">↓</button>
+                              <button className="text-red-600" onClick={(e) => { e.stopPropagation(); removePage(idx); }}><Trash2 className="w-4 h-4" /></button>
+                            </div>
                           </div>
                         </div>
                       ))}

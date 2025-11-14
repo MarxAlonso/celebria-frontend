@@ -144,17 +144,17 @@ export default function InvitationPreviewPage() {
                     const desc = event?.description || '';
                     const details = [infoLine, desc].filter(Boolean).join('\n');
                     const alreadyIncluded = body.includes(event?.title || '') || body.includes(dateStr) || body.includes(event?.location || '');
-                    const enhancedBody = alreadyIncluded ? body : [body, details].filter(Boolean).join('\n\n');
+                    const enhancedBody = idx === 0 ? (alreadyIncluded ? body : [body, details].filter(Boolean).join('\n\n')) : body;
                     const isCentered = designData?.layout === 'centered-header';
                     return (
                       <div key={idx} className="mx-auto" style={{ width: 360, height: 640 }}>
                         <div className="rounded-lg border border-celebrity-gray-200 overflow-hidden" style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
                           <div className="absolute inset-0 p-4">
                             {isCentered ? (
-                              <>
-                                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 text-3xl font-bold text-center text-celebrity-gray-900" style={{ fontFamily: designData?.fonts?.heading || 'serif' }}>{header}</div>
-                                <div className="absolute left-4 right-4 top-[60%] text-sm text-center whitespace-pre-line text-celebrity-gray-800" style={{ fontFamily: designData?.fonts?.body || 'sans-serif' }}>{enhancedBody}</div>
-                              </>
+                              <div className="w-full h-full flex flex-col items-center justify-center text-center">
+                                <div className="text-3xl font-bold text-celebrity-gray-900" style={{ fontFamily: designData?.fonts?.heading || 'serif' }}>{header}</div>
+                                <div className="mt-4 text-sm whitespace-pre-line text-celebrity-gray-800" style={{ fontFamily: designData?.fonts?.body || 'sans-serif' }}>{enhancedBody}</div>
+                              </div>
                             ) : (
                               <>
                                 <div className="text-xl font-bold text-celebrity-gray-900" style={{ fontFamily: designData?.fonts?.heading || 'serif' }}>{header}</div>
@@ -196,12 +196,7 @@ export default function InvitationPreviewPage() {
                                     alt=""
                                     fill
                                     style={{
-                                      objectFit: (el.styles?.objectFit as
-                                        | 'fill'
-                                        | 'contain'
-                                        | 'cover'
-                                        | 'none'
-                                        | 'scale-down') || 'cover',
+                                      objectFit: (el.styles?.objectFit as 'fill' | 'contain' | 'cover' | 'none' | 'scale-down') || 'cover',
                                     }}
                                   />
                                 </div>
