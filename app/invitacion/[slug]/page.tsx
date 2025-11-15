@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { CountdownTimer } from "@/components/CountdownTimer";
 import { useParams } from "next/navigation";
 import { invitationService } from "@/lib/invitations";
 
 type ColorKey = "primary" | "secondary" | "accent" | "text";
 type PageElement = {
   id: string;
-  type: "text" | "image";
+  type: "text" | "image" | "countdown";
   x: number;
   y: number;
   zIndex?: number;
@@ -17,6 +18,7 @@ type PageElement = {
   width?: number;
   height?: number;
   styles?: React.CSSProperties & { objectFit?: "fill" | "contain" | "cover" | "none" | "scale-down" };
+  countdown?: { source: "event" | "custom"; dateISO?: string };
 };
 
 type EditableDesign = {
@@ -46,6 +48,10 @@ export default function PublicInvitationPage() {
   const [title, setTitle] = useState<string>("");
   const [designData, setDesignData] = useState<EditableDesign | null>(null);
   const [event, setEvent] = useState<EventInfo | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const BASE_W = 360;
+  const BASE_H = 640;
+  const [scale, setScale] = useState<number>(1);
 
   useEffect(() => {
     const load = async () => {
@@ -65,6 +71,17 @@ export default function PublicInvitationPage() {
     load();
   }, [slug]);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new (window as any).ResizeObserver((entries: any) => {
+      const w = entries[0]?.contentRect?.width || BASE_W;
+      setScale(w / BASE_W);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const previewStyle = useMemo(
     () => ({
       background: `linear-gradient(135deg, ${designData?.colors?.primary || '#8b5cf6'}, ${designData?.colors?.secondary || '#f59e0b'})`,
@@ -77,7 +94,7 @@ export default function PublicInvitationPage() {
   return (
     <div className="min-h-screen bg-[#F6E7E4]">
       <div className="px-6 py-6">
-        <div className="mx-auto" style={{ maxWidth: 720 }}>
+        <div ref={containerRef} className="mx-auto" style={{ maxWidth: 720 }}>
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-celebrity-purple"></div>
@@ -109,39 +126,40 @@ export default function PublicInvitationPage() {
                       className="rounded-lg border border-celebrity-gray-200 overflow-hidden"
                       style={{ width: "100%" }}
                     >
-                      <div style={{ position: "relative", width: "100%", aspectRatio: "9 / 16", ...style }}>
-                        <div className="absolute inset-0 p-6">
-                          {isCentered ? (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-center">
-                              <div
-                                className="text-3xl font-bold text-celebrity-gray-900"
-                                style={{ fontFamily: designData?.fonts?.heading || "serif" }}
-                              >
-                                {header}
+                      <div style={{ position: "relative", width: BASE_W * scale, height: BASE_H * scale }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, width: BASE_W, height: BASE_H, transform: `scale(${scale})`, transformOrigin: 'top left', ...style }}>
+                          <div className="absolute inset-0 p-6">
+                            {isCentered ? (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-center">
+                                <div
+                                  className="text-3xl font-bold text-celebrity-gray-900"
+                                  style={{ fontFamily: designData?.fonts?.heading || "serif" }}
+                                >
+                                  {header}
+                                </div>
+                                <div
+                                  className="mt-4 text-base whitespace-pre-line text-celebrity-gray-800"
+                                  style={{ fontFamily: designData?.fonts?.body || "sans-serif" }}
+                                >
+                                  {enhancedBody}
+                                </div>
                               </div>
-                              <div
-                                className="mt-4 text-base whitespace-pre-line text-celebrity-gray-800"
-                                style={{ fontFamily: designData?.fonts?.body || "sans-serif" }}
-                              >
-                                {enhancedBody}
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div
-                                className="text-2xl font-bold text-celebrity-gray-900"
-                                style={{ fontFamily: designData?.fonts?.heading || "serif" }}
-                              >
-                                {header}
-                              </div>
-                              <div
-                                className="mt-4 text-base whitespace-pre-line text-celebrity-gray-800"
-                                style={{ fontFamily: designData?.fonts?.body || "sans-serif" }}
-                              >
-                                {enhancedBody}
-                              </div>
-                            </>
-                          )}
+                            ) : (
+                              <>
+                                <div
+                                  className="text-2xl font-bold text-celebrity-gray-900"
+                                  style={{ fontFamily: designData?.fonts?.heading || "serif" }}
+                                >
+                                  {header}
+                                </div>
+                                <div
+                                  className="mt-4 text-base whitespace-pre-line text-celebrity-gray-800"
+                                  style={{ fontFamily: designData?.fonts?.body || "sans-serif" }}
+                                >
+                                  {enhancedBody}
+                                </div>
+                              </>
+                            )}
                           <div className="absolute left-6 right-6 bottom-6 text-sm opacity-80 text-celebrity-gray-700">{footer}</div>
 
                           {(page.elements || []).map((el) => {
@@ -151,7 +169,7 @@ export default function PublicInvitationPage() {
                               top: el.y,
                               zIndex: el.zIndex || 1,
                               transform: `rotate(${el.rotation || 0}deg)`,
-                              ...(el.styles || {}),
+                              ...(el.styles || (el as any).style || {}),
                             };
                             if (el.type === "text") {
                               return (
@@ -170,7 +188,7 @@ export default function PublicInvitationPage() {
                               );
                             }
                             if (el.type === "image" && el.src) {
-                              const objectFitStyle = el.styles?.objectFit || "cover";
+                               const objectFitStyle = (el.styles?.objectFit as any) || (el as any).style?.objectFit || "cover";
                               return (
                                 <div
                                   key={el.id}
@@ -190,8 +208,17 @@ export default function PublicInvitationPage() {
                                 </div>
                               );
                             }
+                            if (el.type === "countdown") {
+                              const target = (el.countdown?.source || "event") === "event" ? event?.eventDate : el.countdown?.dateISO;
+                              return (
+                                <div key={el.id} style={{ ...baseStyle, width: el.width || 300, height: el.height || 60 }}>
+                                  <CountdownTimer targetDate={target} />
+                                </div>
+                              );
+                            }
                             return null;
                           })}
+                          </div>
                         </div>
                       </div>
                     </div>

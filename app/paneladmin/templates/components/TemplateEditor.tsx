@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { CountdownTimer } from '@/components/CountdownTimer';
 import { Button } from '@/components/ui/Button';
 import { Palette, Plus, Save } from 'lucide-react';
 import { CreateTemplateDto, TemplateType } from '@/lib/templates';
@@ -25,7 +26,7 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
     fontFamily: form.design.fonts.body,
   }), [form]);
 
-  const addElement = (pageIdx: number, type: 'text' | 'image' | 'shape') => {
+  const addElement = (pageIdx: number, type: 'text' | 'image' | 'shape' | 'countdown') => {
     setForm((p) => {
       const pages = [...(p.design.pages || [])];
       const page = { ...(pages[pageIdx] || {}) } as any;
@@ -35,6 +36,8 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
         elements.push({ id, type, content: 'Nuevo texto', x: 20, y: 30, zIndex: 1, style: { color: '#1f2937', fontFamily: p.design.fonts.body, fontSize: '16px' } });
       } else if (type === 'image') {
         elements.push({ id, type, src: 'https://via.placeholder.com/150', x: 40, y: 60, width: 120, height: 80, zIndex: 1, style: { objectFit: 'cover' } });
+      } else if (type === 'countdown') {
+        elements.push({ id, type, x: 24, y: 24, width: 300, height: 60, zIndex: 1, style: {}, countdown: { source: 'event' } });
       } else {
         elements.push({ id, type, x: 10, y: 10, width: 80, height: 40, zIndex: 0, style: { background: '#e5e7eb' } });
       }
@@ -216,6 +219,13 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                                 <img key={el.id} src={el.src || ''} alt="" style={{ ...baseStyle, objectFit: (el.style?.objectFit as any) || 'cover' }} />
                               );
                             }
+                            if (el.type === 'countdown') {
+                              return (
+                                <div key={el.id} style={baseStyle}>
+                                  <CountdownTimer targetDate={el.countdown?.dateISO || new Date(Date.now() + 7*24*3600*1000).toISOString()} />
+                                </div>
+                              );
+                            }
                             return (
                               <div key={el.id} style={{ ...baseStyle, background: el.style?.background || '#e5e7eb' }} />
                             );
@@ -254,6 +264,7 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                               <div className="flex gap-2">
                                 <Button variant="outline" onClick={() => addElement(idx, 'text')}>Agregar texto</Button>
                                 <Button variant="outline" onClick={() => addElement(idx, 'image')}>Agregar imagen</Button>
+                                <Button variant="outline" onClick={() => addElement(idx, 'countdown')}>Agregar cronómetro</Button>
                               </div>
                             </div>
                             <div className="space-y-3">
@@ -272,6 +283,23 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                                         <label className="block text-xs font-medium mb-1">URL Imagen</label>
                                         <input className="w-full px-3 py-2 border rounded" value={el.src || ''} onChange={(e) => updateElement(idx, el.id, { src: e.target.value })} />
                                       </div>
+                                    )}
+                                    {el.type === 'countdown' && (
+                                      <>
+                                        <div>
+                                          <label className="block text-xs font-medium mb-1">Fuente</label>
+                                          <select className="w-full px-3 py-2 border rounded" value={el.countdown?.source || 'event'} onChange={(e) => updateElement(idx, el.id, { countdown: { ...(el.countdown || {}), source: e.target.value } })}>
+                                            <option value="event">Fecha del evento</option>
+                                            <option value="custom">Fecha personalizada</option>
+                                          </select>
+                                        </div>
+                                        {(el.countdown?.source || 'event') === 'custom' && (
+                                          <div className="col-span-2">
+                                            <label className="block text-xs font-medium mb-1">Fecha objetivo</label>
+                                            <input type="datetime-local" className="w-full px-3 py-2 border rounded" value={(el.countdown?.dateISO || '').replace('Z','')} onChange={(e) => updateElement(idx, el.id, { countdown: { ...(el.countdown || {}), dateISO: new Date(e.target.value).toISOString() } })} />
+                                          </div>
+                                        )}
+                                      </>
                                     )}
                                     <div>
                                       <label className="block text-xs font-medium mb-1">X</label>

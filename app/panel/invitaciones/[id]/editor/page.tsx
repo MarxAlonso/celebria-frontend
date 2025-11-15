@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { CountdownTimer } from '@/components/CountdownTimer';
 import { useParams } from 'next/navigation';
 import { OrganizerProtectedRoute } from '@/components/OrganizerProtectedRoute';
 import { Sidebar } from '@/components/Sidebar';
@@ -15,7 +16,7 @@ type BackgroundType = 'image' | 'color';
 
 type PageElement = {
   id: string;
-  type: 'text' | 'image' | 'shape';
+  type: 'text' | 'image' | 'shape' | 'countdown';
   content?: string; // texto para type=text
   src?: string; // url para type=image
   x: number;
@@ -25,6 +26,7 @@ type PageElement = {
   rotation?: number;
   zIndex?: number;
   styles?: Record<string, any>;
+  countdown?: { source: 'event' | 'custom'; dateISO?: string };
 };
 
 type DesignPage = {
@@ -207,6 +209,21 @@ export default function InvitationEditorPage() {
       height: 640,
       zIndex: 0,
       styles: { objectFit: 'cover' },
+    };
+    setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
+  };
+
+  const addCountdownElement = (idx: number) => {
+    const newEl: PageElement = {
+      id: `el-${Date.now()}`,
+      type: 'countdown',
+      x: 20,
+      y: 20,
+      width: 300,
+      height: 60,
+      zIndex: 1,
+      styles: {},
+      countdown: { source: 'event' },
     };
     setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
   };
@@ -457,6 +474,7 @@ export default function InvitationEditorPage() {
                               const url = prompt('URL de imagen (Google Drive u otra):');
                               if (url) addImageElement(selectedPage, url);
                             }}>Imagen (URL)</Button>
+                            <Button variant="outline" onClick={() => addCountdownElement(selectedPage)}>Cronómetro</Button>
                           </div>
                         </div>
                         <div className="space-y-3">
@@ -481,6 +499,24 @@ export default function InvitationEditorPage() {
                                   <input type="number" value={el.width || 100} onChange={(e) => updateElement(selectedPage, el.id, { width: Number(e.target.value) })} />
                                   <label className="text-xs">Alto</label>
                                   <input type="number" value={el.height || 100} onChange={(e) => updateElement(selectedPage, el.id, { height: Number(e.target.value) })} />
+                                </div>
+                              ) : el.type === 'countdown' ? (
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                  <label className="text-xs">Fuente</label>
+                                  <select value={el.countdown?.source || 'event'} onChange={(e) => updateElement(selectedPage, el.id, { countdown: { ...(el.countdown || {}), source: e.target.value as 'event' | 'custom' } })}>
+                                    <option value="event">Usar fecha del evento</option>
+                                    <option value="custom">Fecha personalizada</option>
+                                  </select>
+                                  { (el.countdown?.source || 'event') === 'custom' && (
+                                    <>
+                                      <label className="text-xs">Fecha objetivo</label>
+                                      <input type="datetime-local" value={(el.countdown?.dateISO || '').replace('Z','')} onChange={(e) => updateElement(selectedPage, el.id, { countdown: { ...(el.countdown || {}), dateISO: new Date(e.target.value).toISOString() } })} />
+                                    </>
+                                  )}
+                                  <label className="text-xs">Tamaño</label>
+                                  <input type="number" value={(el.styles?.fontSize as number) || 18} onChange={(e) => updateElement(selectedPage, el.id, { styles: { fontSize: Number(e.target.value) } })} />
+                                  <label className="text-xs">Color</label>
+                                  <input type="color" value={(el.styles?.color as string) || '#111111'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { color: e.target.value } })} />
                                 </div>
                               ) : null}
                               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -573,6 +609,10 @@ export default function InvitationEditorPage() {
                     }
                     if (el.type === 'image') {
                       return <img key={el.id} src={el.src} alt="" style={{ ...style, width: el.width || 100, height: el.height || 100 }} />;
+                    }
+                    if (el.type === 'countdown') {
+                      const target = (el.countdown?.source || 'event') === 'event' ? (eventDraft?.eventDate || event?.eventDate) : el.countdown?.dateISO;
+                      return <div key={el.id} style={{ ...style, width: el.width, height: el.height }}><CountdownTimer targetDate={target} className="text-celebrity-gray-900" /></div>;
                     }
                     return null;
                   })}

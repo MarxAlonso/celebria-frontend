@@ -40,16 +40,20 @@ export interface Template {
       sections?: Array<{ key: string; text?: string }>;
       elements?: Array<{
         id: string;
-        type: 'text' | 'image' | 'shape';
-        content?: string; // para texto
-        src?: string; // para imagenes por URL
-        x: number; // posición relativa en px
+        type: 'text' | 'image' | 'shape' | 'countdown';
+        content?: string;
+        src?: string;
+        x: number;
         y: number;
         width?: number;
         height?: number;
         rotation?: number;
         zIndex?: number;
         style?: Record<string, string>;
+        countdown?: {
+          source: 'event' | 'custom';
+          dateISO?: string;
+        };
       }>;
     }>;
   };

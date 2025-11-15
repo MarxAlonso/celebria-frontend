@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { CountdownTimer } from '@/components/CountdownTimer';
 import { useParams } from 'next/navigation';
 import { OrganizerProtectedRoute } from '@/components/OrganizerProtectedRoute';
 import { Sidebar } from '@/components/Sidebar';
@@ -13,7 +14,7 @@ import Image from 'next/image';
 type ColorKey = 'primary' | 'secondary' | 'accent' | 'text';
 type PageElement = {
   id: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'countdown';
   x: number;
   y: number;
   zIndex?: number;
@@ -23,6 +24,7 @@ type PageElement = {
   width?: number;
   height?: number;
   styles?: React.CSSProperties;
+  countdown?: { source: 'event' | 'custom'; dateISO?: string };
 };
 
 type EditableDesign = {
@@ -163,7 +165,7 @@ export default function InvitationPreviewPage() {
                             )}
                             <div className="absolute left-4 right-4 bottom-4 text-xs opacity-80 text-celebrity-gray-700">{footer}</div>
 
-                            {/* Elementos dinámicos (texto/imágenes) guardados en las páginas */}
+                            {/* Elementos dinámicos (texto/imágenes/cronómetro) guardados en las páginas */}
                             {(page.elements || []).map((el) => {
                               const baseStyle: React.CSSProperties = {
                                 position: 'absolute',
@@ -171,7 +173,7 @@ export default function InvitationPreviewPage() {
                                 top: el.y,
                                 zIndex: el.zIndex || 1,
                                 transform: `rotate(${el.rotation || 0}deg)`,
-                                ...(el.styles || {}),
+                                ...(el.styles || (el as any).style || {}),
                               };
                               if (el.type === 'text') {
                                 return (
@@ -196,12 +198,20 @@ export default function InvitationPreviewPage() {
                                     alt=""
                                     fill
                                     style={{
-                                      objectFit: (el.styles?.objectFit as 'fill' | 'contain' | 'cover' | 'none' | 'scale-down') || 'cover',
+                                      objectFit: ((el.styles?.objectFit as 'fill' | 'contain' | 'cover' | 'none' | 'scale-down') || (el as any).style?.objectFit || 'cover'),
                                     }}
                                   />
                                 </div>
                               );
                             }
+                              if (el.type === 'countdown') {
+                                const target = (el.countdown?.source || 'event') === 'event' ? event?.eventDate : el.countdown?.dateISO;
+                                return (
+                                  <div key={el.id} style={{ ...baseStyle, width: el.width || 300, height: el.height || 60 }}>
+                                    <CountdownTimer targetDate={target} />
+                                  </div>
+                                );
+                              }
                               return null;
                             })}
                           </div>
