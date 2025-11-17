@@ -11,12 +11,13 @@ import { templateService, Template } from '@/lib/templates';
 import { eventService, Event } from '@/lib/events';
 import { Plus, Save, Trash2, Eye } from 'lucide-react';
 import { EditorHeader } from './components/EditorHeader';
+import { MapEmbed } from '@/components/MapEmbed';
 
 type BackgroundType = 'image' | 'color';
 
 type PageElement = {
   id: string;
-  type: 'text' | 'image' | 'shape' | 'countdown';
+  type: 'text' | 'image' | 'shape' | 'countdown' | 'map';
   content?: string; // texto para type=text
   src?: string; // url para type=image
   x: number;
@@ -27,6 +28,7 @@ type PageElement = {
   zIndex?: number;
   styles?: Record<string, any>;
   countdown?: { source: 'event' | 'custom'; dateISO?: string };
+  map?: { source: 'event' | 'custom'; query?: string; url?: string };
 };
 
 type DesignPage = {
@@ -209,6 +211,20 @@ export default function InvitationEditorPage() {
       height: 640,
       zIndex: 0,
       styles: { objectFit: 'cover' },
+    };
+    setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
+  };
+  const addMapElement = (idx: number) => {
+    const newEl: PageElement = {
+      id: `el-${Date.now()}`,
+      type: 'map',
+      x: 16,
+      y: 16,
+      width: 328,
+      height: 200,
+      zIndex: 1,
+      styles: {},
+      map: { source: 'event' },
     };
     setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
   };
@@ -472,10 +488,11 @@ export default function InvitationEditorPage() {
                             <Button variant="outline" onClick={() => addTextElement(selectedPage)}><Plus className="w-4 h-4 mr-2" /> Texto</Button>
                             <Button variant="outline" onClick={() => {
                               const url = prompt('URL de imagen (Google Drive u otra):');
-                              if (url) addImageElement(selectedPage, url);
-                            }}>Imagen (URL)</Button>
-                            <Button variant="outline" onClick={() => addCountdownElement(selectedPage)}>Cronómetro</Button>
-                          </div>
+                          if (url) addImageElement(selectedPage, url);
+                        }}>Imagen (URL)</Button>
+                        <Button variant="outline" onClick={() => addMapElement(selectedPage)}>Mapa</Button>
+                        <Button variant="outline" onClick={() => addCountdownElement(selectedPage)}>Cronómetro</Button>
+                      </div>
                         </div>
                         <div className="space-y-3">
                           {(currentPage?.elements || []).map((el) => (
@@ -532,6 +549,24 @@ export default function InvitationEditorPage() {
                                   <input className="text-black" type="number" value={(el.styles?.fontSize as number) || 18} onChange={(e) => updateElement(selectedPage, el.id, { styles: { fontSize: Number(e.target.value) } })} />
                                   <label className="text-xs text-black">Color</label>
                                   <input className="text-black" type="color" value={(el.styles?.color as string) || '#111111'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { color: e.target.value } })} />
+                                </div>
+                              ) : el.type === 'map' ? (
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                  <label className="text-xs text-black">Fuente</label>
+                                  <select className="text-black" value={el.map?.source || 'event'} onChange={(e) => updateElement(selectedPage, el.id, { map: { ...(el.map || {}), source: e.target.value as 'event' | 'custom' } })}>
+                                    <option value="event">Usar ubicación del evento</option>
+                                    <option value="custom">Ubicación personalizada</option>
+                                  </select>
+                                  {(el.map?.source || 'event') === 'custom' && (
+                                    <>
+                                      <label className="text-xs text-black">Texto o URL</label>
+                                      <input className="col-span-2 px-3 py-2 border border-gray-300 rounded text-black" value={el.map?.query || el.map?.url || ''} onChange={(e) => updateElement(selectedPage, el.id, { map: { ...(el.map || {}), query: e.target.value, url: undefined } })} />
+                                    </>
+                                  )}
+                                  <label className="text-xs text-black">Ancho</label>
+                                  <input className="text-black" type="number" value={el.width || 300} onChange={(e) => updateElement(selectedPage, el.id, { width: Number(e.target.value) })} />
+                                  <label className="text-xs text-black">Alto</label>
+                                  <input className="text-black" type="number" value={el.height || 200} onChange={(e) => updateElement(selectedPage, el.id, { height: Number(e.target.value) })} />
                                 </div>
                               ) : null}
                               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -624,6 +659,10 @@ export default function InvitationEditorPage() {
                     }
                     if (el.type === 'image') {
                       return <img key={el.id} src={el.src} alt="" style={{ ...style, width: el.width || 100, height: el.height || 100 }} />;
+                    }
+                    if (el.type === 'map') {
+                      const q = (el.map?.source || 'event') === 'event' ? (eventDraft?.location || event?.location) : (el.map?.query || el.map?.url);
+                      return <div key={el.id} style={{ ...style, width: el.width || 300, height: el.height || 200 }}><MapEmbed query={q || ''} /></div>;
                     }
                     if (el.type === 'countdown') {
                       const target = (el.countdown?.source || 'event') === 'event' ? (eventDraft?.eventDate || event?.eventDate) : el.countdown?.dateISO;
