@@ -381,7 +381,7 @@ export default function InvitationEditorPage() {
                             pg.background?.type === 'image' ? { backgroundImage: `url(${pg.background?.value})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: pg.background?.value || '#ffffff' }
                           ) }} />
                           <div className="p-2 flex items-center justify-between text-xs">
-                            <span>Página {idx + 1}</span>
+                            <span className="text-black">Página {idx + 1}</span>
                             <div className="flex items-center gap-2">
                               <button className="text-celebrity-gray-700" onClick={(e) => { e.stopPropagation(); movePage(idx, idx - 1); }} title="Subir">↑</button>
                               <button className="text-celebrity-gray-700" onClick={(e) => { e.stopPropagation(); movePage(idx, idx + 1); }} title="Bajar">↓</button>
@@ -396,7 +396,7 @@ export default function InvitationEditorPage() {
                     <div className="mt-6">
                       <h4 className="text-sm font-medium text-celebrity-gray-900 mb-2">Importar páginas desde template</h4>
                       <div className="flex gap-2">
-                        <select className="px-3 py-2 border border-celebrity-gray-300 rounded flex-1" value={importTemplateId} onChange={(e) => setImportTemplateId(e.target.value)}>
+                        <select className="px-3 py-2 border border-celebrity-gray-300 rounded flex-1 text-black" value={importTemplateId} onChange={(e) => setImportTemplateId(e.target.value)}>
                           <option value="">Selecciona un template</option>
                           {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
@@ -411,7 +411,7 @@ export default function InvitationEditorPage() {
                     <h3 className="text-lg font-semibold text-celebrity-gray-900 mb-3">Fondo y secciones</h3>
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Estilo de encabezado</label>
-                      <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={layout} onChange={(e) => setLayout(e.target.value)}>
+                      <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={layout} onChange={(e) => setLayout(e.target.value)}>
                         <option value="template">Plantilla (arriba a la izquierda)</option>
                         <option value="centered-header">Centrado medio (encabezado grande y centrado)</option>
                       </select>
@@ -419,7 +419,7 @@ export default function InvitationEditorPage() {
                     <div className="mb-3 grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Fuente de encabezado</label>
-                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={fonts.heading} onChange={(e) => setFonts((f) => ({ ...f, heading: e.target.value }))}>
+                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={fonts.heading} onChange={(e) => setFonts((f) => ({ ...f, heading: e.target.value }))}>
                           <option value="serif">Serif</option>
                           <option value="sans-serif">Sans-serif</option>
                           <option value="monospace">Monospace</option>
@@ -429,7 +429,7 @@ export default function InvitationEditorPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Fuente de cuerpo</label>
-                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={fonts.body} onChange={(e) => setFonts((f) => ({ ...f, body: e.target.value }))}>
+                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={fonts.body} onChange={(e) => setFonts((f) => ({ ...f, body: e.target.value }))}>
                           <option value="sans-serif">Sans-serif</option>
                           <option value="serif">Serif</option>
                           <option value="monospace">Monospace</option>
@@ -441,33 +441,33 @@ export default function InvitationEditorPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Tipo de fondo</label>
-                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.background?.type || 'color'} onChange={(e) => updateBackground(selectedPage, e.target.value as BackgroundType, currentPage?.background?.value || '')}>
+                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={currentPage?.background?.type || 'color'} onChange={(e) => updateBackground(selectedPage, e.target.value as BackgroundType, currentPage?.background?.value || '')}>
                           <option value="image">Imagen (URL)</option>
                           <option value="color">Color</option>
                         </select>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Valor</label>
-                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" placeholder="https://... o #f0e6dc" value={currentPage?.background?.value || ''} onChange={(e) => updateBackground(selectedPage, currentPage?.background?.type || 'color', e.target.value)} />
+                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" placeholder="https://... o #f0e6dc" value={currentPage?.background?.value || ''} onChange={(e) => updateBackground(selectedPage, currentPage?.background?.type || 'color', e.target.value)} />
                       </div>
 
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Header</label>
-                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.sections?.find((s) => s.key === 'header')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'header', e.target.value)} />
+                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={currentPage?.sections?.find((s) => s.key === 'header')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'header', e.target.value)} />
                       </div>
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Body</label>
-                        <textarea rows={3} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.sections?.find((s) => s.key === 'body')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'body', e.target.value)} />
+                        <textarea rows={3} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black text-black" value={currentPage?.sections?.find((s) => s.key === 'body')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'body', e.target.value)} />
                       </div>
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Footer</label>
-                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={currentPage?.sections?.find((s) => s.key === 'footer')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'footer', e.target.value)} />
+                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={currentPage?.sections?.find((s) => s.key === 'footer')?.text || ''} onChange={(e) => updateSectionText(selectedPage, 'footer', e.target.value)} />
                       </div>
 
                       {/* Elementos */}
                       <div className="col-span-2 mt-4">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-semibold">Elementos</h4>
+                          <h4 className="text-sm font-semibold text-black">Elementos</h4>
                           <div className="flex gap-2">
                             <Button variant="outline" onClick={() => addTextElement(selectedPage)}><Plus className="w-4 h-4 mr-2" /> Texto</Button>
                             <Button variant="outline" onClick={() => {
@@ -486,31 +486,31 @@ export default function InvitationEditorPage() {
                               </div>
                               {el.type === 'text' ? (
                                 <div className="grid grid-cols-2 gap-2 mt-2">
-                                  <input className="col-span-2 px-3 py-2 border border-celebrity-gray-300 rounded" value={el.content || ''} onChange={(e) => updateElement(selectedPage, el.id, { content: e.target.value })} />
-                                  <label className="text-xs">Color</label>
-                                  <input type="color" value={(el.styles?.color as string) || '#111111'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { color: e.target.value } })} />
-                                  <label className="text-xs">Tamaño</label>
-                                  <input type="number" value={(el.styles?.fontSize as number) || 16} onChange={(e) => updateElement(selectedPage, el.id, { styles: { fontSize: Number(e.target.value) } })} />
+                                  <input className="col-span-2 px-3 py-2 border border-gray-300 rounded text-black" value={el.content || ''} onChange={(e) => updateElement(selectedPage, el.id, { content: e.target.value })} />
+                                  <label className="text-xs text-black">Color</label>
+                                  <input className='border border-gray-300 rounded' type="color" value={(el.styles?.color as string) || '#111111'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { color: e.target.value } })} />
+                                  <label className="text-xs text-black">Tamaño</label>
+                                  <input type="number" className="text-black border border-gray-300 rounded" value={(el.styles?.fontSize as number) || 16} onChange={(e) => updateElement(selectedPage, el.id, { styles: { fontSize: Number(e.target.value) } })} />
                                 </div>
                               ) : el.type === 'image' ? (
                                 <div className="grid grid-cols-2 gap-2 mt-2">
-                                  <input className="col-span-2 px-3 py-2 border border-celebrity-gray-300 rounded" value={el.src || ''} onChange={(e) => updateElement(selectedPage, el.id, { src: e.target.value })} />
-                                  <label className="text-xs">Ancho</label>
-                                  <input type="number" value={el.width || 100} onChange={(e) => updateElement(selectedPage, el.id, { width: Number(e.target.value) })} />
-                                  <label className="text-xs">Alto</label>
-                                  <input type="number" value={el.height || 100} onChange={(e) => updateElement(selectedPage, el.id, { height: Number(e.target.value) })} />
+                                  <input className="col-span-2 px-3 py-2 border border-gray-300 rounded text-black" value={el.src || ''} onChange={(e) => updateElement(selectedPage, el.id, { src: e.target.value })} />
+                                  <label className="text-xs text-black">Ancho</label>
+                                  <input type="number text-black" value={el.width || 100} onChange={(e) => updateElement(selectedPage, el.id, { width: Number(e.target.value) })} />
+                                  <label className="text-xs text-black">Alto</label>
+                                  <input type="number text-black" value={el.height || 100} onChange={(e) => updateElement(selectedPage, el.id, { height: Number(e.target.value) })} />
                                 </div>
                               ) : el.type === 'countdown' ? (
                                 <div className="grid grid-cols-2 gap-2 mt-2">
-                                  <label className="text-xs">Fuente</label>
-                                  <select value={el.countdown?.source || 'event'} onChange={(e) => updateElement(selectedPage, el.id, { countdown: { ...(el.countdown || {}), source: e.target.value as 'event' | 'custom' } })}>
+                                  <label className="text-xs text-black">Fuente</label>
+                                  <select className="text-black" value={el.countdown?.source || 'event'} onChange={(e) => updateElement(selectedPage, el.id, { countdown: { ...(el.countdown || {}), source: e.target.value as 'event' | 'custom' } })}>
                                     <option value="event">Usar fecha del evento</option>
                                     <option value="custom">Fecha personalizada</option>
                                   </select>
                                   { (el.countdown?.source || 'event') === 'custom' && (
                                     <>
-                                      <label className="text-xs">Fecha objetivo</label>
-                                      <input
+                                      <label className="text-xs text-black">Fecha objetivo</label>
+                                      <input className="text-black"
   type="datetime-local"
   value={(el.countdown?.dateISO || '').replace('Z','')}
   onChange={(e) => {
@@ -528,21 +528,21 @@ export default function InvitationEditorPage() {
 
                                     </>
                                   )}
-                                  <label className="text-xs">Tamaño</label>
-                                  <input type="number" value={(el.styles?.fontSize as number) || 18} onChange={(e) => updateElement(selectedPage, el.id, { styles: { fontSize: Number(e.target.value) } })} />
-                                  <label className="text-xs">Color</label>
-                                  <input type="color" value={(el.styles?.color as string) || '#111111'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { color: e.target.value } })} />
+                                  <label className="text-xs text-black">Tamaño</label>
+                                  <input className="text-black" type="number" value={(el.styles?.fontSize as number) || 18} onChange={(e) => updateElement(selectedPage, el.id, { styles: { fontSize: Number(e.target.value) } })} />
+                                  <label className="text-xs text-black">Color</label>
+                                  <input className="text-black" type="color" value={(el.styles?.color as string) || '#111111'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { color: e.target.value } })} />
                                 </div>
                               ) : null}
                               <div className="grid grid-cols-2 gap-2 mt-2">
-                                <label className="text-xs">X</label>
-                                <input type="number" value={el.x} onChange={(e) => updateElement(selectedPage, el.id, { x: Number(e.target.value) })} />
-                                <label className="text-xs">Y</label>
-                                <input type="number" value={el.y} onChange={(e) => updateElement(selectedPage, el.id, { y: Number(e.target.value) })} />
-                                <label className="text-xs">Rotación</label>
-                                <input type="number" value={el.rotation || 0} onChange={(e) => updateElement(selectedPage, el.id, { rotation: Number(e.target.value) })} />
-                                <label className="text-xs">Z-Index</label>
-                                <input type="number" value={el.zIndex || 1} onChange={(e) => updateElement(selectedPage, el.id, { zIndex: Number(e.target.value) })} />
+                                <label className="text-xs text-black">X</label>
+                                <input className="text-black" type="number" value={el.x} onChange={(e) => updateElement(selectedPage, el.id, { x: Number(e.target.value) })} />
+                                <label className="text-xs text-black">Y</label>
+                                <input className="text-black" type="number" value={el.y} onChange={(e) => updateElement(selectedPage, el.id, { y: Number(e.target.value) })} />
+                                <label className="text-xs text-black">Rotación</label>
+                                <input className="text-black" type="number" value={el.rotation || 0} onChange={(e) => updateElement(selectedPage, el.id, { rotation: Number(e.target.value) })} />
+                                <label className="text-xs text-black">Z-Index</label>
+                                <input className="text-black" type="number" value={el.zIndex || 1} onChange={(e) => updateElement(selectedPage, el.id, { zIndex: Number(e.target.value) })} />
                               </div>
                             </div>
                           ))}
@@ -561,21 +561,21 @@ export default function InvitationEditorPage() {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Título</label>
-                      <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.title || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), title: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={eventDraft.title || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), title: e.target.value }))} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Fecha</label>
-                        <input type="date" className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={(eventDraft.eventDate || '').split('T')[0]} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), eventDate: new Date(e.target.value).toISOString() }))} />
+                        <input type="date" className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={(eventDraft.eventDate || '').split('T')[0]} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), eventDate: new Date(e.target.value).toISOString() }))} />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Ubicación</label>
-                        <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.location || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), location: e.target.value }))} />
+                        <input className="w-full text-black px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.location || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), location: e.target.value }))} />
                       </div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-celebrity-gray-700 mb-1">Descripción</label>
-                      <textarea rows={3} className="w-full px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.description || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), description: e.target.value }))} />
+                      <textarea rows={3} className="w-full text-black px-3 py-2 border border-celebrity-gray-300 rounded" value={eventDraft.description || ''} onChange={(e) => setEventDraft((d) => ({ ...(d || {}), description: e.target.value }))} />
                     </div>
                     <div className="flex items-center gap-2">
                       <Button onClick={saveEventDraft} disabled={savingEvent}><Save className="w-4 h-4 mr-2" /> Guardar evento</Button>
