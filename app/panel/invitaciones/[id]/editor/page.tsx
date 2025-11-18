@@ -12,12 +12,13 @@ import { eventService, Event } from '@/lib/events';
 import { Plus, Save, Trash2, Eye } from 'lucide-react';
 import { EditorHeader } from './components/EditorHeader';
 import { MapEmbed } from '@/components/MapEmbed';
+import { AudioPlayer } from '@/components/AudioPlayer';
 
 type BackgroundType = 'image' | 'color';
 
 type PageElement = {
   id: string;
-  type: 'text' | 'image' | 'shape' | 'countdown' | 'map';
+  type: 'text' | 'image' | 'shape' | 'countdown' | 'map' | 'audio';
   content?: string; // texto para type=text
   src?: string; // url para type=image
   x: number;
@@ -29,12 +30,14 @@ type PageElement = {
   styles?: Record<string, any>;
   countdown?: { source: 'event' | 'custom'; dateISO?: string };
   map?: { source: 'event' | 'custom'; query?: string; url?: string };
+  audio?: { source: 'file' | 'youtube'; url?: string };
 };
 
 type DesignPage = {
-  background?: { type: BackgroundType; value: string };
+  background?: { type: BackgroundType; value: string; fit?: 'cover' | 'contain' };
   sections?: { key: 'header' | 'body' | 'footer'; text: string }[];
   elements?: PageElement[];
+  orientation?: 'portrait' | 'landscape';
 };
 
 export default function InvitationEditorPage() {
@@ -244,6 +247,19 @@ export default function InvitationEditorPage() {
     setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
   };
 
+  const addAudioElement = (idx: number) => {
+    const newEl: PageElement = {
+      id: `el-${Date.now()}`,
+      type: 'audio',
+      x: 0,
+      y: 0,
+      zIndex: 0,
+      styles: {},
+      audio: { source: 'file', url: '' },
+    };
+    setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
+  };
+
   const updateElement = (pageIdx: number, elId: string, patch: Partial<PageElement>) => {
     setPages((p) => p.map((pg, i) => {
       if (i !== pageIdx) return pg;
@@ -353,19 +369,18 @@ export default function InvitationEditorPage() {
     }
   };
 
+  const currentPage = pages[selectedPage];
   const previewStyle = useMemo(() => ({
-    width: 360,
-    height: 640,
+    width: (currentPage?.orientation || 'portrait') === 'landscape' ? 640 : 360,
+    height: (currentPage?.orientation || 'portrait') === 'landscape' ? 360 : 640,
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative' as const,
     border: '1px solid #e5e7eb',
     background: '#ffffff',
-  }), []);
-
-  const currentPage = pages[selectedPage];
+  }), [currentPage?.orientation]);
   const backgroundStyle = currentPage?.background?.type === 'image'
-    ? { backgroundImage: `url(${currentPage.background?.value || ''})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    ? { backgroundImage: `url(${currentPage.background?.value || ''})`, backgroundSize: (currentPage.background?.fit || 'cover'), backgroundPosition: 'center' }
     : { background: currentPage?.background?.value || '#ffffff' };
 
   return (
@@ -393,8 +408,8 @@ export default function InvitationEditorPage() {
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {pages.map((pg, idx) => (
                         <div key={idx} className={`cursor-pointer rounded border ${idx === selectedPage ? 'border-celebrity-purple' : 'border-celebrity-gray-200'}`} onClick={() => setSelectedPage(idx)}>
-                          <div style={{ width: 120, height: 200, ...(
-                            pg.background?.type === 'image' ? { backgroundImage: `url(${pg.background?.value})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: pg.background?.value || '#ffffff' }
+                          <div style={{ width: pg.orientation === 'landscape' ? 200 : 120, height: pg.orientation === 'landscape' ? 120 : 200, ...(
+                            pg.background?.type === 'image' ? { backgroundImage: `url(${pg.background?.value})`, backgroundSize: (pg.background?.fit || 'cover'), backgroundPosition: 'center' } : { background: pg.background?.value || '#ffffff' }
                           ) }} />
                           <div className="p-2 flex items-center justify-between text-xs">
                             <span className="text-black">Página {idx + 1}</span>
@@ -466,6 +481,22 @@ export default function InvitationEditorPage() {
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Valor</label>
                         <input className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" placeholder="https://... o #f0e6dc" value={currentPage?.background?.value || ''} onChange={(e) => updateBackground(selectedPage, currentPage?.background?.type || 'color', e.target.value)} />
                       </div>
+                      {currentPage?.background?.type === 'image' && (
+                        <div>
+                          <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Ajuste de imagen</label>
+                          <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={currentPage?.background?.fit || 'cover'} onChange={(e) => setPages((p) => p.map((pg, i) => i === selectedPage ? { ...pg, background: { ...(pg.background || { type: 'image', value: '' }), fit: e.target.value as 'cover' | 'contain' } } : pg))}>
+                            <option value="cover">Cubrir (recorta)</option>
+                            <option value="contain">Contener (completa)</option>
+                          </select>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Orientación</label>
+                        <select className="w-full px-3 py-2 border border-celebrity-gray-300 rounded text-black" value={currentPage?.orientation || 'portrait'} onChange={(e) => setPages((p) => p.map((pg, i) => i === selectedPage ? { ...pg, orientation: e.target.value as 'portrait' | 'landscape' } : pg))}>
+                          <option value="portrait">Vertical</option>
+                          <option value="landscape">Horizontal</option>
+                        </select>
+                      </div>
 
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-celebrity-gray-700 mb-2">Header</label>
@@ -492,6 +523,7 @@ export default function InvitationEditorPage() {
                         }}>Imagen (URL)</Button>
                         <Button variant="outline" onClick={() => addMapElement(selectedPage)}>Mapa</Button>
                         <Button variant="outline" onClick={() => addCountdownElement(selectedPage)}>Cronómetro</Button>
+                        <Button variant="outline" onClick={() => addAudioElement(selectedPage)}>Audio</Button>
                       </div>
                         </div>
                         <div className="space-y-3">
@@ -575,6 +607,17 @@ export default function InvitationEditorPage() {
                                   <input className="text-black" type="number" value={el.width || 300} onChange={(e) => updateElement(selectedPage, el.id, { width: Number(e.target.value) })} />
                                   <label className="text-xs text-black">Alto</label>
                                   <input className="text-black" type="number" value={el.height || 200} onChange={(e) => updateElement(selectedPage, el.id, { height: Number(e.target.value) })} />
+                                </div>
+                              ) : el.type === 'audio' ? (
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                  <label className="text-xs text-black">Fuente</label>
+                                  <select className="text-black" value={el.audio?.source || 'file'} onChange={(e) => updateElement(selectedPage, el.id, { audio: { ...(el.audio || {}), source: e.target.value as 'file' | 'youtube' } })}>
+                                    <option value="file">Archivo local</option>
+                                    <option value="youtube">YouTube</option>
+                                  </select>
+                                  <label className="text-xs text-black">URL</label>
+                                  <input className="col-span-2 px-3 py-2 border border-gray-300 rounded text-black" placeholder="/audio.mp3 o https://youtube.com/watch?v=..." value={el.audio?.url || ''} onChange={(e) => updateElement(selectedPage, el.id, { audio: { ...(el.audio || {}), url: e.target.value } })} />
+                                  <p className="col-span-2 text-[10px] text-celebrity-gray-600">El audio se reproduce en bucle y no ocupa espacio visible.</p>
                                 </div>
                               ) : null}
                               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -671,6 +714,13 @@ export default function InvitationEditorPage() {
                     if (el.type === 'map') {
                       const q = (el.map?.source || 'event') === 'event' ? (eventDraft?.location || event?.location) : (el.map?.query || el.map?.url);
                       return <div key={el.id} style={{ ...style, width: el.width || 300, height: el.height || 200 }}><MapEmbed query={q || ''} /></div>;
+                    }
+                    if (el.type === 'audio') {
+                      return (
+                        <div key={el.id} style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', left: -9999, top: -9999 }}>
+                          <AudioPlayer source={(el.audio?.source || 'file') as 'file' | 'youtube'} url={el.audio?.url || ''} />
+                        </div>
+                      );
                     }
                     if (el.type === 'countdown') {
                       const target = (el.countdown?.source || 'event') === 'event' ? (eventDraft?.eventDate || event?.eventDate) : el.countdown?.dateISO;

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CountdownTimer } from '@/components/CountdownTimer';
+import { AudioPlayer } from '@/components/AudioPlayer';
 import { MapEmbed } from '@/components/MapEmbed';
 import { useParams } from 'next/navigation';
 import { OrganizerProtectedRoute } from '@/components/OrganizerProtectedRoute';
@@ -91,6 +92,20 @@ export default function InvitationPreviewPage() {
     [designData]
   );
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number }>({ w: 720, h: 480 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new (window as any).ResizeObserver((entries: any) => {
+      const rect = entries[0]?.contentRect;
+      setContainerSize({ w: rect?.width || 720, h: rect?.height || 480 });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <OrganizerProtectedRoute>
       <div className="flex h-screen bg-[#F6E7E4]">
@@ -133,10 +148,27 @@ export default function InvitationPreviewPage() {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-celebrity-purple"></div>
                 </div>
               ) : designData?.pages && designData.pages.length > 0 ? (
-                <div className="space-y-6">
+                <div className="space-y-6" ref={containerRef}>
+                  {/* Audio global de la invitación (toma el primero) */}
+                  {(() => {
+                    const all = designData.pages || [];
+                    for (const pg of all) {
+                      for (const el of (pg.elements || [])) {
+                        if ((el as any).type === 'audio' && (el as any).audio) {
+                          const a = (el as any).audio as { source: 'file' | 'youtube'; url?: string };
+                          return (
+                            <div key={`audio-global`} style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', left: -9999, top: -9999 }}>
+                              <AudioPlayer source={a.source} url={a.url || ''} />
+                            </div>
+                          );
+                        }
+                      }
+                    }
+                    return null;
+                  })()}
                   {designData.pages.map((page, idx) => {
                     const style = page.background?.type === 'image'
-                      ? { backgroundImage: `url(${page.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                      ? { backgroundImage: `url(${page.background.value})`, backgroundSize: ((page as any).background?.fit || 'cover'), backgroundPosition: 'center' }
                       : { background: page.background?.value || '#ffffff' };
                     const header = page.sections?.find((s) => s.key === 'header')?.text || '';
                     const body = page.sections?.find((s) => s.key === 'body')?.text || '';
@@ -150,10 +182,15 @@ export default function InvitationPreviewPage() {
                     const alreadyIncluded = body.includes(event?.title || '') || body.includes(dateStr) || body.includes(event?.location || '');
                     const enhancedBody = idx === 0 ? (alreadyIncluded ? body : [body, details].filter(Boolean).join('\n\n')) : body;
                     const isCentered = designData?.layout === 'centered-header';
+                    const isLandscape = ((page as any).orientation || 'portrait') === 'landscape';
+                    const pageW = isLandscape ? 640 : 360;
+                    const pageH = isLandscape ? 360 : 640;
+                    const scale = Math.min(containerSize.w / pageW, (containerSize.h || 480) / pageH);
                     return (
-                      <div key={idx} className="mx-auto" style={{ width: 360, height: 640 }}>
-                        <div className="rounded-lg border border-celebrity-gray-200 overflow-hidden" style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
-                          <div className="absolute inset-0 p-4">
+                      <div key={idx} className="mx-auto" style={{ width: pageW * scale, height: pageH * scale }}>
+                        <div className="rounded-lg border border-celebrity-gray-200 overflow-hidden" style={{ width: '100%', height: '100%', position: 'relative' }}>
+                          <div style={{ position: 'absolute', left: 0, top: 0, width: pageW, height: pageH, transform: `scale(${scale})`, transformOrigin: 'top left', ...style }}>
+                            <div className="absolute inset-0 p-4">
                             {isCentered ? (
                               <div className="w-full h-full flex flex-col items-center justify-center text-center">
                                 <div className="text-3xl font-bold text-celebrity-gray-900" style={{ fontFamily: designData?.fonts?.heading || 'serif' }}>{header}</div>
@@ -167,7 +204,7 @@ export default function InvitationPreviewPage() {
                             )}
                             <div className="absolute left-4 right-4 bottom-4 text-xs opacity-80 text-celebrity-gray-700">{footer}</div>
 
-                            {/* Elementos dinámicos (texto/imágenes/cronómetro) guardados en las páginas */}
+                            {/* Elementos dinámicos (texto/imágenes/mapa/cronómetro) guardados en las páginas */}
                             {(page.elements || []).map((el) => {
                               const baseStyle: React.CSSProperties = {
                                 position: 'absolute',
@@ -195,14 +232,17 @@ export default function InvitationPreviewPage() {
                                     position: 'absolute',
                                   }}
                                 >
-                                  <Image
-                                    src={el.src}
-                                    alt=""
-                                    fill
-                                    style={{
-                                      objectFit: ((el.styles?.objectFit as 'fill' | 'contain' | 'cover' | 'none' | 'scale-down') || (el as any).style?.objectFit || 'cover'),
-                                    }}
-                                  />
+                                  {(() => {
+                                    const objectFitStyle = (el.styles?.objectFit as any) || (el as any).style?.objectFit || 'cover';
+                                    return (
+                                      <Image
+                                        src={el.src}
+                                        alt=""
+                                        fill
+                                        style={{ objectFit: objectFitStyle }}
+                                      />
+                                    );
+                                  })()}
                                 </div>
                               );
                               }
@@ -222,8 +262,13 @@ export default function InvitationPreviewPage() {
                                   </div>
                                 );
                               }
+                              if ((el as any).type === 'audio') {
+                              
+                                return <></>;
+                              }
                               return null;
                             })}
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -6,6 +6,7 @@ import { MapEmbed } from '@/components/MapEmbed';
 import { Button } from '@/components/ui/Button';
 import { Palette, Plus, Save } from 'lucide-react';
 import { CreateTemplateDto, TemplateType } from '@/lib/templates';
+import AudioPlayer from '@/components/AudioPlayer';
 
 interface TemplateEditorProps {
   form: CreateTemplateDto;
@@ -237,6 +238,14 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                                 </div>
                               );
                             }
+                            if ((el as any).type === 'audio' && (el as any).audio) {
+                              const a = (el as any).audio as { source: 'file' | 'youtube'; url?: string };
+                              return (
+                                <div key={el.id} style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', left: -9999, top: -9999 }}>
+                                  <AudioPlayer source={a.source} url={a.url || ''} />
+                                </div>
+                              );
+                            }
                             return (
                               <div key={el.id} style={{ ...baseStyle, background: el.style?.background || '#e5e7eb' }} />
                             );
@@ -328,6 +337,21 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                                             <input className="w-full px-3 py-2 border rounded" value={el.map?.query || el.map?.url || ''} onChange={(e) => updateElement(idx, el.id, { map: { ...(el.map || {}), query: e.target.value, url: undefined } })} />
                                           </div>
                                         )}
+                                      </>
+                                    )}
+                                    {(el as any).type === 'audio' && (
+                                      <>
+                                        <div>
+                                          <label className="block text-xs font-medium mb-1">Fuente</label>
+                                          <select className="w-full px-3 py-2 border rounded" value={(el as any).audio?.source || 'file'} onChange={(e) => updateElement(idx, el.id, { audio: { ...((el as any).audio || {}), source: e.target.value } })}>
+                                            <option value="file">Archivo local</option>
+                                            <option value="youtube">YouTube</option>
+                                          </select>
+                                        </div>
+                                        <div className="col-span-2">
+                                          <label className="block text-xs font-medium mb-1">URL</label>
+                                          <input className="w-full px-3 py-2 border rounded" placeholder="/audio.mp3 o https://youtube.com/watch?v=..." value={(el as any).audio?.url || ''} onChange={(e) => updateElement(idx, el.id, { audio: { ...((el as any).audio || {}), url: e.target.value } })} />
+                                        </div>
                                       </>
                                     )}
                                     <div>

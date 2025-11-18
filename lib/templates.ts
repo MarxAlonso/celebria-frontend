@@ -40,7 +40,7 @@ export interface Template {
       sections?: Array<{ key: string; text?: string }>;
       elements?: Array<{
         id: string;
-        type: 'text' | 'image' | 'shape' | 'countdown' | 'map';
+        type: 'text' | 'image' | 'shape' | 'countdown' | 'map' | 'audio';
         content?: string;
         src?: string;
         x: number;
@@ -57,6 +57,10 @@ export interface Template {
         map?: {
           source: 'event' | 'custom';
           query?: string;
+          url?: string;
+        };
+        audio?: {
+          source: 'file' | 'youtube';
           url?: string;
         };
       }>;

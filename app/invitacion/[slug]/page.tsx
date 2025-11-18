@@ -3,13 +3,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { MapEmbed } from "@/components/MapEmbed";
+import { AudioPlayer } from "@/components/AudioPlayer";
 import { useParams } from "next/navigation";
 import { invitationService } from "@/lib/invitations";
 
 type ColorKey = "primary" | "secondary" | "accent" | "text";
 type PageElement = {
   id: string;
-  type: "text" | "image" | "countdown" | "map";
+  type: "text" | "image" | "countdown" | "map" | "audio";
   x: number;
   y: number;
   zIndex?: number;
@@ -21,6 +22,7 @@ type PageElement = {
   styles?: React.CSSProperties & { objectFit?: "fill" | "contain" | "cover" | "none" | "scale-down" };
   countdown?: { source: "event" | "custom"; dateISO?: string };
   map?: { source: "event" | "custom"; query?: string; url?: string };
+  audio?: { source: "file" | "youtube"; url?: string };
 };
 
 type EditableDesign = {
@@ -51,9 +53,7 @@ export default function PublicInvitationPage() {
   const [designData, setDesignData] = useState<EditableDesign | null>(null);
   const [event, setEvent] = useState<EventInfo | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const BASE_W = 360;
-  const BASE_H = 640;
-  const [scale, setScale] = useState<number>(1);
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number }>({ w: 360, h: 640 });
 
   useEffect(() => {
     const load = async () => {
@@ -77,8 +77,10 @@ export default function PublicInvitationPage() {
     const el = containerRef.current;
     if (!el) return;
     const ro = new (window as any).ResizeObserver((entries: any) => {
-      const w = entries[0]?.contentRect?.width || BASE_W;
-      setScale(w / BASE_W);
+      const rect = entries[0]?.contentRect;
+      const w = rect?.width || window.innerWidth;
+      const h = rect?.height || window.innerHeight;
+      setContainerSize({ w, h });
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -96,19 +98,35 @@ export default function PublicInvitationPage() {
   return (
     <div className="min-h-screen bg-[#F6E7E4]">
       <div className="px-6 py-6">
-        <div ref={containerRef} className="mx-auto" style={{ maxWidth: 720 }}>
+        <div ref={containerRef} className="mx-auto" style={{ width: '100%', height: '100vh' }}>
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-celebrity-purple"></div>
             </div>
           ) : designData?.pages && designData.pages.length > 0 ? (
             <div className="space-y-6">
+              {/* Audio global de la invitación (toma el primero) */}
+              {(() => {
+                const pages = designData.pages || [];
+                for (const pg of pages) {
+                  for (const el of (pg.elements || [])) {
+                    if (el.type === 'audio' && el.audio) {
+                      return (
+                        <div key={'audio-global'} style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', left: -9999, top: -9999 }}>
+                          <AudioPlayer source={(el.audio.source as any) || 'file'} url={el.audio.url || ''} />
+                        </div>
+                      );
+                    }
+                  }
+                }
+                return null;
+              })()}
               {designData.pages.map((page, idx) => {
                 const style =
                   page.background?.type === "image"
                     ? {
                         backgroundImage: `url(${page.background.value})`,
-                        backgroundSize: "cover",
+                        backgroundSize: ((page as any).background?.fit || "cover"),
                         backgroundPosition: "center",
                       }
                     : { background: page.background?.value || "#ffffff" };
@@ -122,13 +140,17 @@ export default function PublicInvitationPage() {
                 const details = [infoLine, desc].filter(Boolean).join("\n");
                 const enhancedBody = idx === 0 ? [body, details].filter(Boolean).join("\n\n") : body;
                 const isCentered = designData?.layout === "centered-header";
+                const isLandscape = ((page as any).orientation || 'portrait') === 'landscape';
+                const BASE_W = isLandscape ? 640 : 360;
+                const BASE_H = isLandscape ? 360 : 640;
+                const scale = Math.min(containerSize.w / BASE_W, containerSize.h / BASE_H);
                 return (
                   <div key={idx} className="w-full">
                     <div
                       className="rounded-lg border border-celebrity-gray-200 overflow-hidden"
                       style={{ width: "100%" }}
                     >
-                      <div style={{ position: "relative", width: BASE_W * scale, height: BASE_H * scale }}>
+                      <div style={{ position: "relative", width: BASE_W * scale, height: BASE_H * scale, margin: '0 auto' }}>
                         <div style={{ position: 'absolute', left: 0, top: 0, width: BASE_W, height: BASE_H, transform: `scale(${scale})`, transformOrigin: 'top left', ...style }}>
                           <div className="absolute inset-0 p-6">
                             {isCentered ? (
@@ -188,6 +210,10 @@ export default function PublicInvitationPage() {
                                   {el.content}
                                 </div>
                               );
+                            }
+                            if (el.type === "audio") {
+                              // Evitar duplicado: se renderiza como global arriba
+                              return null;
                             }
                             if (el.type === "image" && el.src) {
                                const objectFitStyle = (el.styles?.objectFit as any) || (el as any).style?.objectFit || "cover";
