@@ -29,7 +29,7 @@ export function AudioPlayer({ source, url }: { source: 'file' | 'youtube'; url?:
       };
       a.autoplay = true;
       a.loop = true;
-      a.playsInline = true as any;
+      a.setAttribute("playsinline", "true");
       a.muted = true;
       a.play().catch(() => {});
       document.addEventListener('pointerdown', onInteract);
