@@ -10,7 +10,7 @@ import { invitationService } from "@/lib/invitations";
 type ColorKey = "primary" | "secondary" | "accent" | "text";
 type PageElement = {
   id: string;
-  type: "text" | "image" | "countdown" | "map" | "audio";
+  type: "text" | "image" | "countdown" | "map" | "audio" | "whatsapp";
   x: number;
   y: number;
   zIndex?: number;
@@ -23,6 +23,7 @@ type PageElement = {
   countdown?: { source: "event" | "custom"; dateISO?: string };
   map?: { source: "event" | "custom"; query?: string; url?: string };
   audio?: { source: "file" | "youtube"; url?: string };
+  whatsapp?: { phone?: string; message?: string; label?: string };
 };
 
 type EditableDesign = {
@@ -273,6 +274,35 @@ export default function PublicInvitationPage() {
                                 <div key={el.id} style={{ ...baseStyle, width: el.width || 300, height: el.height || 60 }}>
                                   <CountdownTimer targetDate={target} />
                                 </div>
+                              );
+                            }
+                            if (el.type === "whatsapp") {
+                              const phone = el.whatsapp?.phone || "";
+                              const message = el.whatsapp?.message || "";
+                              const label = el.whatsapp?.label || "Agendar asistencia";
+                              const num = (phone || '').replace(/[^0-9]/g, '');
+                              return (
+                                <a
+                                  key={el.id}
+                                  href={`https://wa.me/${num}?text=${encodeURIComponent(message)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    ...baseStyle,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: el.width || 220,
+                                    height: el.height || 44,
+                                    backgroundColor: (el.styles?.backgroundColor as string) || '#25D366',
+                                    color: (el.styles?.color as string) || '#ffffff',
+                                    borderRadius: (el.styles?.borderRadius as number) || 8,
+                                    textDecoration: 'none',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {label}
+                                </a>
                               );
                             }
                             return null;
