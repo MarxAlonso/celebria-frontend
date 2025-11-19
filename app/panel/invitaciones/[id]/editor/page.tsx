@@ -18,7 +18,7 @@ type BackgroundType = 'image' | 'color';
 
 type PageElement = {
   id: string;
-  type: 'text' | 'image' | 'shape' | 'countdown' | 'map' | 'audio';
+  type: 'text' | 'image' | 'shape' | 'countdown' | 'map' | 'audio' | 'whatsapp';
   content?: string; // texto para type=text
   src?: string; // url para type=image
   x: number;
@@ -31,6 +31,7 @@ type PageElement = {
   countdown?: { source: 'event' | 'custom'; dateISO?: string };
   map?: { source: 'event' | 'custom'; query?: string; url?: string };
   audio?: { source: 'file' | 'youtube'; url?: string };
+  whatsapp?: { phone?: string; message?: string; label?: string };
 };
 
 type DesignPage = {
@@ -256,6 +257,21 @@ export default function InvitationEditorPage() {
       zIndex: 0,
       styles: {},
       audio: { source: 'file', url: '' },
+    };
+    setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
+  };
+
+  const addWhatsAppElement = (idx: number) => {
+    const newEl: PageElement = {
+      id: `el-${Date.now()}`,
+      type: 'whatsapp',
+      x: 24,
+      y: 24,
+      width: 220,
+      height: 44,
+      zIndex: 2,
+      styles: { backgroundColor: '#25D366', color: '#ffffff', borderRadius: 8 },
+      whatsapp: { phone: '+51', message: '', label: 'Agendar asistencia' },
     };
     setPages((p) => p.map((pg, i) => (i === idx ? { ...pg, elements: [...(pg.elements || []), newEl] } : pg)));
   };
@@ -600,14 +616,15 @@ export default function InvitationEditorPage() {
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="text-sm font-semibold text-black">Elementos</h4>
                         <div className="flex flex-wrap gap-2">
-                            <Button className="w-full sm:w-auto" variant="outline" onClick={() => addTextElement(selectedPage)}><Plus className="w-4 h-4 mr-2" /> Texto</Button>
-                            <Button className="w-full sm:w-auto" variant="outline" onClick={() => {
-                              const url = prompt('URL de imagen (Google Drive u otra):');
+                        <Button className="w-full sm:w-auto" variant="outline" onClick={() => addTextElement(selectedPage)}><Plus className="w-4 h-4 mr-2" /> Texto</Button>
+                        <Button className="w-full sm:w-auto" variant="outline" onClick={() => {
+                          const url = prompt('URL de imagen (Google Drive u otra):');
                           if (url) addImageElement(selectedPage, url);
                         }}>Imagen (URL)</Button>
                         <Button className="w-full sm:w-auto" variant="outline" onClick={() => addMapElement(selectedPage)}>Mapa</Button>
                         <Button className="w-full sm:w-auto" variant="outline" onClick={() => addCountdownElement(selectedPage)}>Cronómetro</Button>
                         <Button className="w-full sm:w-auto" variant="outline" onClick={() => addAudioElement(selectedPage)}>Audio</Button>
+                        <Button className="w-full sm:w-auto" variant="outline" onClick={() => addWhatsAppElement(selectedPage)}>WhatsApp</Button>
                       </div>
                         </div>
                         <div className="space-y-3">
@@ -715,6 +732,25 @@ export default function InvitationEditorPage() {
                                   }
                                   />
                                   <p className="col-span-2 text-[10px] text-celebrity-gray-600">El audio se reproduce en bucle y no ocupa espacio visible.</p>
+                                </div>
+                              ) : el.type === 'whatsapp' ? (
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                  <label className="text-xs text-black">Teléfono (con +51)</label>
+                                  <input className="text-black border border-gray-300 rounded" value={el.whatsapp?.phone || ''} onChange={(e) => updateElement(selectedPage, el.id, { whatsapp: { ...(el.whatsapp || {}), phone: e.target.value } })} />
+                                  <label className="text-xs text-black">Mensaje</label>
+                                  <input className="text-black border border-gray-300 rounded" value={el.whatsapp?.message || ''} onChange={(e) => updateElement(selectedPage, el.id, { whatsapp: { ...(el.whatsapp || {}), message: e.target.value } })} />
+                                  <label className="text-xs text-black">Texto del botón</label>
+                                  <input className="text-black border border-gray-300 rounded" value={el.whatsapp?.label || ''} onChange={(e) => updateElement(selectedPage, el.id, { whatsapp: { ...(el.whatsapp || {}), label: e.target.value } })} />
+                                  <label className="text-xs text-black">Ancho</label>
+                                  <input className="text-black border border-gray-300 rounded" type="number" value={el.width || 220} onChange={(e) => updateElement(selectedPage, el.id, { width: Number(e.target.value) })} />
+                                  <label className="text-xs text-black">Alto</label>
+                                  <input className="text-black border border-gray-300 rounded" type="number" value={el.height || 44} onChange={(e) => updateElement(selectedPage, el.id, { height: Number(e.target.value) })} />
+                                  <label className="text-xs text-black">Color fondo</label>
+                                  <input className="text-black border border-gray-300 rounded" type="color" value={(el.styles?.backgroundColor as string) || '#25D366'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { ...(el.styles || {}), backgroundColor: e.target.value } })} />
+                                  <label className="text-xs text-black">Color texto</label>
+                                  <input className="text-black border border-gray-300 rounded" type="color" value={(el.styles?.color as string) || '#ffffff'} onChange={(e) => updateElement(selectedPage, el.id, { styles: { ...(el.styles || {}), color: e.target.value } })} />
+                                  <label className="text-xs text-black">Radio</label>
+                                  <input className="text-black border border-gray-300 rounded" type="number" value={(el.styles?.borderRadius as number) || 8} onChange={(e) => updateElement(selectedPage, el.id, { styles: { ...(el.styles || {}), borderRadius: Number(e.target.value) } })} />
                                 </div>
                               ) : null}
                               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -869,6 +905,34 @@ export default function InvitationEditorPage() {
                     if (el.type === 'countdown') {
                       const target = (el.countdown?.source || 'event') === 'event' ? (eventDraft?.eventDate || event?.eventDate) : el.countdown?.dateISO;
                       return <div key={el.id} style={{ ...style, width: el.width, height: el.height }}><CountdownTimer targetDate={target} className="text-celebrity-gray-900" /></div>;
+                    }
+                    if (el.type === 'whatsapp') {
+                      const phone = el.whatsapp?.phone || '';
+                      const message = el.whatsapp?.message || '';
+                      const label = el.whatsapp?.label || 'Agendar asistencia';
+                      return (
+                        <a
+                          key={el.id}
+                          href={`https://wa.me/${(phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            ...style,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: el.width || 220,
+                            height: el.height || 44,
+                            backgroundColor: (el.styles?.backgroundColor as string) || '#25D366',
+                            color: (el.styles?.color as string) || '#ffffff',
+                            borderRadius: (el.styles?.borderRadius as number) || 8,
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {label}
+                        </a>
+                      );
                     }
                     return null;
                   })}

@@ -29,11 +29,47 @@ export function TemplatePreviewModal({ viewing, onClose }: TemplatePreviewModalP
               const footer = page.sections?.find((s) => s.key === 'footer')?.text || '';
               return (
                 <div key={idx} className="mx-auto" style={{ width: 360, height: 640 }}>
-                  <div className="rounded-lg border border-celebrity-gray-200 overflow-hidden" style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
-                    <div className="absolute inset-0 p-4 flex flex-col justify-between">
-                      <div className="text-xl font-serif font-bold text-celebrity-gray-900">{header}</div>
-                      <div className="text-sm text-celebrity-gray-800">{body}</div>
-                      <div className="text-xs opacity-80 text-celebrity-gray-700">{footer}</div>
+                  <div className="rounded-lg border border-celebrity-gray-200 overflow-hidden" style={{ width: '100%', height: '100%', position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: 0, top: 0, width: 360, height: 640, ...style }}>
+                      <div className="absolute inset-0 p-4">
+                        <div className="text-xl font-serif font-bold text-celebrity-gray-900">{header}</div>
+                        <div className="mt-2 text-sm text-celebrity-gray-800 whitespace-pre-line">{body}</div>
+                        <div className="absolute left-4 right-4 bottom-4 text-xs opacity-80 text-celebrity-gray-700">{footer}</div>
+                        {(page.elements || []).map((el: any) => {
+                          const baseStyle: React.CSSProperties = {
+                            position: 'absolute',
+                            left: el.x,
+                            top: el.y,
+                            width: el.width,
+                            height: el.height,
+                            zIndex: el.zIndex || 1,
+                            transform: `rotate(${el.rotation || 0}deg)`,
+                            ...((el.style || {}) as any),
+                          };
+                          if (el.type === 'text') return <div key={el.id} style={baseStyle}>{el.content}</div>;
+                          if (el.type === 'image') return <img key={el.id} src={el.src || ''} alt="" style={{ ...baseStyle, objectFit: (el.style?.objectFit as any) || 'cover' }} />;
+                          if (el.type === 'map') return <div key={el.id} style={baseStyle}></div>;
+                          if (el.type === 'countdown') return <div key={el.id} style={baseStyle}></div>;
+                          if ((el as any).type === 'whatsapp') {
+                            const phone = (el as any).whatsapp?.phone || '';
+                            const message = (el as any).whatsapp?.message || '';
+                            const label = (el as any).whatsapp?.label || 'Agendar asistencia';
+                            const num = (phone || '').replace(/[^0-9]/g, '');
+                            return (
+                              <a
+                                key={el.id}
+                                href={`https://wa.me/${num}?text=${encodeURIComponent(message)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ ...baseStyle, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontWeight: 600 }}
+                              >
+                                {label}
+                              </a>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>

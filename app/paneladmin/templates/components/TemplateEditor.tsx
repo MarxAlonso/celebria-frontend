@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Palette, Plus, Save } from 'lucide-react';
 import { CreateTemplateDto, TemplateType } from '@/lib/templates';
 import AudioPlayer from '@/components/AudioPlayer';
+import WhatsAppButton from '@/components/WhatsAppButton';
 
 interface TemplateEditorProps {
   form: CreateTemplateDto;
@@ -28,7 +29,7 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
     fontFamily: form.design.fonts.body,
   }), [form]);
 
-  const addElement = (pageIdx: number, type: 'text' | 'image' | 'shape' | 'countdown' | 'map') => {
+  const addElement = (pageIdx: number, type: 'text' | 'image' | 'shape' | 'countdown' | 'map' | 'whatsapp' | 'audio') => {
     setForm((p) => {
       const pages = [...(p.design.pages || [])];
       const page = { ...(pages[pageIdx] || {}) } as any;
@@ -42,6 +43,10 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
         elements.push({ id, type, x: 24, y: 24, width: 300, height: 200, zIndex: 1, style: {}, map: { source: 'custom', query: 'Parque Central, Ciudad' } });
       } else if (type === 'countdown') {
         elements.push({ id, type, x: 24, y: 24, width: 300, height: 60, zIndex: 1, style: {}, countdown: { source: 'event' } });
+      } else if (type === 'audio') {
+        elements.push({ id, type, x: 0, y: 0, width: 0, height: 0, zIndex: 0, style: {}, audio: { source: 'file', url: '' } });
+      } else if (type === 'whatsapp') {
+        elements.push({ id, type, x: 24, y: 24, width: 220, height: 44, zIndex: 2, style: { backgroundColor: '#25D366', color: '#ffffff', borderRadius: 8 }, whatsapp: { phone: '+51', message: '', label: 'Agendar asistencia' } });
       } else {
         elements.push({ id, type, x: 10, y: 10, width: 80, height: 40, zIndex: 0, style: { background: '#e5e7eb' } });
       }
@@ -231,6 +236,37 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                                 </div>
                               );
                             }
+                            if ((el as any).type === 'audio') {
+                              return (
+                                <div key={el.id} style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', left: -9999, top: -9999 }}>
+                                  <AudioPlayer source={((el as any).audio?.source || 'file') as any} url={(el as any).audio?.url || ''} />
+                                </div>
+                              );
+                            }
+                            if ((el as any).type === 'whatsapp') {
+                              const phone = (el as any).whatsapp?.phone || '';
+                              const message = (el as any).whatsapp?.message || '';
+                              const label = (el as any).whatsapp?.label || 'Agendar asistencia';
+                              const num = (phone || '').replace(/[^0-9]/g, '');
+                              return (
+                                <a
+                                  key={el.id}
+                                  href={`https://wa.me/${num}?text=${encodeURIComponent(message)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    ...baseStyle,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    textDecoration: 'none',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {label}
+                                </a>
+                              );
+                            }
                             if (el.type === 'countdown') {
                               return (
                                 <div key={el.id} style={baseStyle}>
@@ -286,6 +322,8 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                                 <Button variant="outline" onClick={() => addElement(idx, 'image')}>Agregar imagen</Button>
                                 <Button variant="outline" onClick={() => addElement(idx, 'map')}>Agregar mapa</Button>
                                 <Button variant="outline" onClick={() => addElement(idx, 'countdown')}>Agregar cronómetro</Button>
+                                <Button variant="outline" onClick={() => addElement(idx, 'audio')}>Agregar audio</Button>
+                                <Button variant="outline" onClick={() => addElement(idx, 'whatsapp')}>Agregar WhatsApp</Button>
                               </div>
                             </div>
                             <div className="space-y-3">
@@ -320,6 +358,37 @@ export function TemplateEditor({ form, setForm, editingId, saving, onCancel, onS
                                             <input type="datetime-local" className="w-full px-3 py-2 border rounded" value={(el.countdown?.dateISO || '').replace('Z','')} onChange={(e) => updateElement(idx, el.id, { countdown: { ...(el.countdown || {}), dateISO: new Date(e.target.value).toISOString() } })} />
                                           </div>
                                         )}
+                                      </>
+                                    )}
+                                    {(el as any).type === 'audio' && (
+                                      <>
+                                        <div>
+                                          <label className="block text-xs font-medium mb-1">Fuente</label>
+                                          <select className="w-full px-3 py-2 border rounded" value={((el as any).audio?.source || 'file')} onChange={(e) => updateElement(idx, el.id, { audio: { ...((el as any).audio || {}), source: e.target.value } })}>
+                                            <option value="file">Archivo local</option>
+                                            <option value="youtube">YouTube</option>
+                                          </select>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                          <label className="block text-xs font-medium mb-1">URL</label>
+                                          <input className="w-full px-3 py-2 border rounded" placeholder="/audio.mp3 o https://youtube.com/watch?v=..." value={((el as any).audio?.url || '')} onChange={(e) => updateElement(idx, el.id, { audio: { ...((el as any).audio || {}), url: e.target.value } })} />
+                                        </div>
+                                      </>
+                                    )}
+                                    {(el as any).type === 'whatsapp' && (
+                                      <>
+                                        <div>
+                                          <label className="block text-xs font-medium mb-1">Teléfono (con +51)</label>
+                                          <input className="w-full px-3 py-2 border rounded" value={((el as any).whatsapp?.phone || '')} onChange={(e) => updateElement(idx, el.id, { whatsapp: { ...((el as any).whatsapp || {}), phone: e.target.value } })} />
+                                        </div>
+                                        <div>
+                                          <label className="block text-xs font-medium mb-1">Mensaje</label>
+                                          <input className="w-full px-3 py-2 border rounded" value={((el as any).whatsapp?.message || '')} onChange={(e) => updateElement(idx, el.id, { whatsapp: { ...((el as any).whatsapp || {}), message: e.target.value } })} />
+                                        </div>
+                                        <div>
+                                          <label className="block text-xs font-medium mb-1">Texto del botón</label>
+                                          <input className="w-full px-3 py-2 border rounded" value={((el as any).whatsapp?.label || '')} onChange={(e) => updateElement(idx, el.id, { whatsapp: { ...((el as any).whatsapp || {}), label: e.target.value } })} />
+                                        </div>
                                       </>
                                     )}
                                     {el.type === 'map' && (
