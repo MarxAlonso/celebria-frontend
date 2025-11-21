@@ -859,7 +859,7 @@ export default function InvitationEditorPage() {
                                         onChange={(e) => {
                                           const d = e.target.value;
                                           const t = (el.countdown?.dateISO || '').split('T')[1] || '00:00';
-                                          updateElement(selectedPage, el.id, { countdown: { ...(el.countdown || {}), dateISO: d ? `${d}T${t}` : '' } });
+                                          updateElement(selectedPage, el.id, { countdown: { source: (el.countdown?.source ?? 'custom'), ...(el.countdown || {}), dateISO: d ? `${d}T${t}` : '' } });
                                         }}
                                       />
                                       <label className="text-xs text-black">Hora</label>
@@ -877,7 +877,7 @@ export default function InvitationEditorPage() {
                                           if (ampm === 'AM' && hh === 12) hh = 0;
                                           const d = (el.countdown?.dateISO || '').split('T')[0] || '';
                                           const t24 = `${String(hh).padStart(2,'0')}:${m || '00'}`;
-                                          updateElement(selectedPage, el.id, { countdown: { ...(el.countdown || {}), dateISO: d ? `${d}T${t24}` : t24 } });
+                                          updateElement(selectedPage, el.id, { countdown: { source: (el.countdown?.source ?? 'custom'), ...(el.countdown || {}), dateISO: d ? `${d}T${t24}` : t24 } });
                                         }}
                                       />
                                       <label className="text-xs text-black">AM/PM</label>
@@ -893,7 +893,7 @@ export default function InvitationEditorPage() {
                                           if (sel === 'PM' && hh < 12) hh += 12;
                                           if (sel === 'AM' && hh >= 12) hh = hh - 12;
                                           const t24 = `${String(hh).padStart(2,'0')}:${m || '00'}`;
-                                          updateElement(selectedPage, el.id, { countdown: { ...(el.countdown || {}), dateISO: d ? `${d}T${t24}` : t24 } });
+                                          updateElement(selectedPage, el.id, { countdown: { source: (el.countdown?.source ?? 'custom'), ...(el.countdown || {}), dateISO: d ? `${d}T${t24}` : t24 } });
                                         }}
                                       >
                                         <option value="AM">AM</option>
